@@ -55,7 +55,7 @@ int main (int argc, char *argv[]) {
     // th.DisableProxies(true); // make circuits shorter (entry = proxy), thus the simulation faster
     th.EnableNscStack(true,"cubic"); // enable linux protocol stack and set tcp flavor
     th.SetRtt(MilliSeconds(rtt)); // set rtt
-    // th.EnablePcap(true); // enable pcap logging
+    th.EnablePcap(true); // enable pcap logging
     // th.ParseFile ("circuits.dat"); // parse scenario from file
 
     Ptr<ConstantRandomVariable> m_bulkRequest = CreateObject<ConstantRandomVariable>();
@@ -70,13 +70,13 @@ int main (int argc, char *argv[]) {
 
     /* state scenario/ add circuits inline */
     th.AddCircuit(1,"entry1","btlnk","exit1", CreateObject<PseudoClientSocket> (m_bulkRequest, m_bulkThink, Seconds(m_startTime->GetValue ())) );
-    th.AddCircuit(2,"entry2","btlnk","exit1", CreateObject<PseudoClientSocket> (m_bulkRequest, m_bulkThink, Seconds(m_startTime->GetValue ())) );
-    th.AddCircuit(3,"entry3","btlnk","exit2", CreateObject<PseudoClientSocket> (m_bulkRequest, m_bulkThink, Seconds(m_startTime->GetValue ())) );
+    //th.AddCircuit(2,"entry2","btlnk","exit1", CreateObject<PseudoClientSocket> (m_bulkRequest, m_bulkThink, Seconds(m_startTime->GetValue ())) );
+    //th.AddCircuit(3,"entry3","btlnk","exit2", CreateObject<PseudoClientSocket> (m_bulkRequest, m_bulkThink, Seconds(m_startTime->GetValue ())) );
 
     th.SetRelayAttribute("btlnk", "BandwidthRate", DataRateValue(DataRate("2Mb/s")));
     th.SetRelayAttribute("btlnk", "BandwidthBurst", DataRateValue(DataRate("2Mb/s")));
 
-    // th.PrintCircuits();
+    th.PrintCircuits();
     th.BuildTopology(); // finally build topology, setup relays and seed circuits
 
     /* limit the access link */
@@ -112,8 +112,9 @@ StatsCallback(TorStarHelper* th, Time simTime)
       Ptr<BaseCircuit> proxyCirc = proxyApp->baseCircuits[*id];
       Ptr<BaseCircuit> exitCirc = exitApp->baseCircuits[*id];
       cout << exitCirc->GetBytesRead(INBOUND) << " " << proxyCirc->GetBytesWritten(INBOUND) << " ";
-      // cout << proxyCirc->GetBytesRead(OUTBOUND) << " " << exitCirc->GetBytesWritten(OUTBOUND) << " ";
-      // proxyCirc->ResetStats(); exitCirc->ResetStats();
+      cout << proxyCirc->GetBytesRead(OUTBOUND) << " " << exitCirc->GetBytesWritten(OUTBOUND) << " ";
+      proxyCirc->ResetStats();
+      exitCirc->ResetStats();
     }
     cout << endl;
 
