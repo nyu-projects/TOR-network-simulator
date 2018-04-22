@@ -13,8 +13,9 @@ void TtlbCallback(int, double, std::string);
 
 int main (int argc, char *argv[]) {
     uint32_t run = 1;
-    Time simTime = Time("120s");
-    string flavor = "vanilla";
+    Time simTime = Time("92s");
+    //string flavor = "vanilla";
+    string flavor = "bktap";
 
     CommandLine cmd;
     cmd.AddValue("run", "run number", run);
@@ -60,7 +61,7 @@ int main (int argc, char *argv[]) {
     m_startTime->SetAttribute ("Max", DoubleValue (30.0));
     th.SetStartTimeStream (m_startTime);
 
-    th.ParseFile ("circuits-5000c50r-20150804.dat",10,0.1); // parse scenario from file
+    th.ParseFile ("circuits-10000c100r-20150804.dat",375,0.1); // parse scenario from file
     // th.PrintCircuits();
     th.BuildTopology(); // finally build topology, setup relays and seed circuits
 
