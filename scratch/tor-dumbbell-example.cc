@@ -13,9 +13,9 @@ void TtlbCallback(int, double, std::string);
 
 int main (int argc, char *argv[]) {
     uint32_t run = 1;
-    Time simTime = Time("92s");
-    //string flavor = "vanilla";
-    string flavor = "bktap";
+    Time simTime = Time("180s");
+    string flavor = "vanilla";
+    //string flavor = "bktap";
 
     CommandLine cmd;
     cmd.AddValue("run", "run number", run);
