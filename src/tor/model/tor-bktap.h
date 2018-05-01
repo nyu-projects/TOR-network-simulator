@@ -517,11 +517,6 @@ public:
 };
 
 
-
-
-
-
-
 class BktapCircuit : public BaseCircuit
 {
 public:
@@ -538,8 +533,6 @@ public:
   Ptr<SeqQueue> GetQueue (CellDirection);
   Ptr<UdpChannel> GetChannel (CellDirection direction);
 };
-
-
 
 
 class TorBktapApp : public TorBaseApp

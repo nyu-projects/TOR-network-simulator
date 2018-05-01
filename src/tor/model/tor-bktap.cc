@@ -443,6 +443,7 @@ TorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, Time baseRtt)
     }
 }
 
+/*
 void
 TorBktapApp::ReceivedFwd (Ptr<BktapCircuit> circ, CellDirection direction, FdbkCellHeader header)
 {
@@ -477,6 +478,46 @@ TorBktapApp::ReceivedFwd (Ptr<BktapCircuit> circ, CellDirection direction, FdbkC
     {
       writeevent = Simulator::Schedule (Seconds (0), &TorBktapApp::WriteCallback, this);
     }
+}
+*/
+
+void
+TorBktapApp::ReceivedFwd (Ptr<BktapCircuit> circ, CellDirection direction, FdbkCellHeader header)
+{
+  //Received flow control feedback (FWD)
+  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<UdpChannel> ch = circ->GetChannel (direction);
+
+	//Changes
+  if (ch->SpeaksCells ()) {
+  	SendFeedbackCell (circ, direction, FWD, header.fwd+1);
+  }
+  else {
+  	Time rtt = queue->virtRtt.EstimateRtt (header.fwd);
+  	ch->rttEstimator.AddSample (rtt);
+
+  	if (queue->virtHeadSeq <= header.fwd){
+      queue->virtHeadSeq = header.fwd;
+    }
+
+  	if (header.fwd > queue->begRttSeq){
+      queue->begRttSeq = queue->nextTxSeq;
+      CongestionAvoidance (queue,ch->rttEstimator.baseRtt);
+      queue->ssthresh = min (queue->cwnd,queue->ssthresh);
+      queue->ssthresh = max (queue->ssthresh,queue->cwnd / 2);
+    }
+  	else if (queue->cwnd <= queue->ssthresh){
+      //TODO test different slow start schemes
+    }
+	}
+
+	CellDirection oppdir = circ->GetOppositeDirection (direction);
+	ch = circ->GetChannel (oppdir);
+  Simulator::Schedule (Seconds (0), &TorBktapApp::ReadCallback, this, ch->m_socket);
+
+  if (writeevent.IsExpired ()) {
+    writeevent = Simulator::Schedule (Seconds (0), &TorBktapApp::WriteCallback, this);
+  }
 }
 
 uint32_t
@@ -616,7 +657,10 @@ TorBktapApp::FlushPendingCell (Ptr<BktapCircuit> circ, CellDirection direction, 
       if (queue->highestTxSeq == header.seq)
         {
           circ->IncrementStats (direction,0,bytes_written);
-          SendFeedbackCell (circ, oppdir, FWD, queue->highestTxSeq + 1);
+
+//Changes
+//          SendFeedbackCell (circ, oppdir, FWD, queue->highestTxSeq + 1);
+
         }
 
       if (!queue->WasRetransmit()) {

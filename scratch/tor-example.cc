@@ -13,7 +13,7 @@ int main (int argc, char *argv[]) {
     uint32_t run = 1;
     Time simTime = Time("60s");
     uint32_t rtt = 40;
-    string flavor = "vanilla";
+    string flavor = "bktap";
 
     CommandLine cmd;
     cmd.AddValue("run", "run number", run);
