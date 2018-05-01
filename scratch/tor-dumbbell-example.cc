@@ -91,12 +91,22 @@ void StatsCallback(TorDumbbellHelper* th, Time simTime) {
     vector<int>::iterator id;
     for (id = th->circuitIds.begin(); id != th->circuitIds.end(); ++id) {
       Ptr<TorBaseApp> proxyApp = th->GetProxyApp(*id);
+      Ptr<TorBaseApp> middleApp = th->GetMiddleApp(*id);
       Ptr<TorBaseApp> exitApp = th->GetExitApp(*id);
       Ptr<BaseCircuit> proxyCirc = proxyApp->baseCircuits[*id];
+      Ptr<BaseCircuit> middleCirc = middleApp->baseCircuits[*id];
       Ptr<BaseCircuit> exitCirc = exitApp->baseCircuits[*id];
-      cout << exitCirc->GetBytesRead(INBOUND) << " " << proxyCirc->GetBytesWritten(INBOUND) << " ";
-      // cout << proxyCirc->GetBytesRead(OUTBOUND) << " " << exitCirc->GetBytesWritten(OUTBOUND) << " ";
-      // proxyCirc->ResetStats(); exitCirc->ResetStats();
+      cout <<"INBOUND: " << endl;
+      cout <<"Exit Node: "<< exitCirc->GetBytesRead(INBOUND) << " " << exitCirc->GetBytesWritten(INBOUND) << endl;
+      cout <<"Middle Node: "<< middleCirc->GetBytesRead(INBOUND) << " " << middleCirc->GetBytesWritten(INBOUND) << endl;
+      cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(INBOUND) << " " << proxyCirc->GetBytesWritten(INBOUND) << endl;
+
+      cout <<"OUTBOUND: " << endl;
+      cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(OUTBOUND) << " " << proxyCirc->GetBytesWritten(OUTBOUND) << endl;
+      cout <<"Middle Node: "<< middleCirc->GetBytesRead(OUTBOUND) << " " << middleCirc->GetBytesWritten(OUTBOUND) << endl;
+      cout <<"Exit Node: "<< exitCirc->GetBytesRead(OUTBOUND) << " " << exitCirc->GetBytesWritten(OUTBOUND) << endl;
+
+      //proxyCirc->ResetStats(); exitCirc->ResetStats();
     }
     cout << endl;
 

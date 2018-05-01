@@ -365,7 +365,7 @@ public:
 
   SeqQueue ()
   {
-    cwnd = 2;
+    cwnd =10; //2;
     nextTxSeq = 1;
     highestTxSeq = 0;
     tailSeq = 0;

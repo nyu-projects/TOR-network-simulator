@@ -443,47 +443,10 @@ TorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, Time baseRtt)
     }
 }
 
-/*
 void
 TorBktapApp::ReceivedFwd (Ptr<BktapCircuit> circ, CellDirection direction, FdbkCellHeader header)
 {
-  //Received flow control feeback (FWD)
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
-  Ptr<UdpChannel> ch = circ->GetChannel (direction);
-  Time rtt = queue->virtRtt.EstimateRtt (header.fwd);
-  ch->rttEstimator.AddSample (rtt);
-
-  if (queue->virtHeadSeq <= header.fwd)
-    {
-      queue->virtHeadSeq = header.fwd;
-    }
-
-  if (header.fwd > queue->begRttSeq)
-    {
-      queue->begRttSeq = queue->nextTxSeq;
-      CongestionAvoidance (queue,ch->rttEstimator.baseRtt);
-      queue->ssthresh = min (queue->cwnd,queue->ssthresh);
-      queue->ssthresh = max (queue->ssthresh,queue->cwnd / 2);
-    }
-  else if (queue->cwnd <= queue->ssthresh)
-    {
-      //TODO test different slow start schemes
-    }
-
-  CellDirection oppdir = circ->GetOppositeDirection (direction);
-  ch = circ->GetChannel (oppdir);
-  Simulator::Schedule (Seconds (0), &TorBktapApp::ReadCallback, this, ch->m_socket);
-
-  if (writeevent.IsExpired ())
-    {
-      writeevent = Simulator::Schedule (Seconds (0), &TorBktapApp::WriteCallback, this);
-    }
-}
-*/
-
-void
-TorBktapApp::ReceivedFwd (Ptr<BktapCircuit> circ, CellDirection direction, FdbkCellHeader header)
-{
+  cout << "Received Feedback Cell" << endl;
   //Received flow control feedback (FWD)
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
   Ptr<UdpChannel> ch = circ->GetChannel (direction);
@@ -675,6 +638,7 @@ TorBktapApp::FlushPendingCell (Ptr<BktapCircuit> circ, CellDirection direction, 
 void
 TorBktapApp::SendFeedbackCell (Ptr<BktapCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack)
 {
+  cout << "Sending Feedback cell" << endl;
   Ptr<UdpChannel> ch = circ->GetChannel (direction);
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
   NS_ASSERT (ch);
