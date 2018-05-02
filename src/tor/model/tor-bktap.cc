@@ -453,7 +453,7 @@ TorBktapApp::ReceivedFwd (Ptr<BktapCircuit> circ, CellDirection direction, FdbkC
 
 	//Changes
   if (ch->SpeaksCells ()) {
-  	SendFeedbackCell (circ, direction, FWD, header.fwd+1);
+  	SendFeedbackCell (circ, direction, FWD, header.fwd);
   }
   else {
   	Time rtt = queue->virtRtt.EstimateRtt (header.fwd);
@@ -621,9 +621,11 @@ TorBktapApp::FlushPendingCell (Ptr<BktapCircuit> circ, CellDirection direction, 
         {
           circ->IncrementStats (direction,0,bytes_written);
 
-//Changes
-//          SendFeedbackCell (circ, oppdir, FWD, queue->highestTxSeq + 1);
-
+//********Changes********
+//Only send Feedback cells if you are an edge node and sending inside tor
+          if (!ch->SpeaksCells ()) {
+            SendFeedbackCell (circ, oppdir, FWD, queue->highestTxSeq + 1);
+          }
         }
 
       if (!queue->WasRetransmit()) {
@@ -638,7 +640,6 @@ TorBktapApp::FlushPendingCell (Ptr<BktapCircuit> circ, CellDirection direction, 
 void
 TorBktapApp::SendFeedbackCell (Ptr<BktapCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack)
 {
-  cout << "Sending Feedback cell" << endl;
   Ptr<UdpChannel> ch = circ->GetChannel (direction);
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
   NS_ASSERT (ch);
@@ -650,6 +651,7 @@ TorBktapApp::SendFeedbackCell (Ptr<BktapCircuit> circ, CellDirection direction, 
         }
       if (flag & FWD)
         {
+          cout << "Sending Feedback Cell" << endl;
           queue->fwdq.push (ack);
         }
       if (queue->ackq.size () > 0 && queue->fwdq.size () > 0)
