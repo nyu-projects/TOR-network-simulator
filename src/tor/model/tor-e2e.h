@@ -12,8 +12,8 @@
 #define NS3_SOCK_STREAM 0
 #define VEGASALPHA 3
 #define VEGASBETA 6
-#define UDP_CELL_HEADER_SIZE (4 + 4 + 2 + 6 + 2 + 1)
-
+#undef UDP_CELL_HEADER_SIZE 
+#define UDP_CELL_HEADER_SIZE (4 + 4 + 2 + 6 + 2 + 1 +1) //%%
 
 namespace ns3 {
 
@@ -94,10 +94,11 @@ public:
   uint8_t digest[6];
   uint16_t length;
   uint8_t cmd;
+  uint8_t ECN; //Changes by Neha
 
   E2eUdpCellHeader ()
   {
-    circId = cellType = flags = seq = streamId = length = cmd = 0;
+    circId = cellType = flags = seq = streamId = length = cmd = ECN = 0; //%%
   }
 
   TypeId
@@ -130,7 +131,7 @@ public:
   uint32_t
   GetSerializedSize () const
   {
-    return (4 + 4 + 2 + 6 + 2 + 1);
+    return (4 + 4 + 2 + 6 + 2 + 1 + 1);  //%%
   }
 
   void
@@ -145,6 +146,7 @@ public:
     i.Write (digest, 6);
     i.WriteU16 (length);
     i.WriteU8 (cmd);
+    i.WriteU8 (ECN); //%%
   }
 
   uint32_t
@@ -159,6 +161,7 @@ public:
     i.Read (digest, 6);
     length = i.ReadU16 ();
     cmd = i.ReadU8 ();
+    ECN = i.ReadU8 (); //%%
     return GetSerializedSize ();
   }
 };
@@ -173,11 +176,13 @@ public:
   uint8_t flags;
   uint32_t ack;
   uint32_t fwd;
-
+  //Changes by Neha
+  uint8_t CE;
   E2eFdbkCellHeader ()
   {
     circId = flags = ack = fwd = 0;
     cellType = FDBK;
+    CE = 0; //Change by Neha
   }
 
   TypeId
@@ -214,7 +219,7 @@ public:
   uint32_t
   GetSerializedSize () const
   {
-    return  (2 + 1 + 1 + 4 + 4);
+    return  (2 + 1 + 1 + 4 + 4 +1); //Changes by Neha
   }
 
   void
@@ -226,6 +231,7 @@ public:
     i.WriteU8 (flags);
     i.WriteU32 (ack);
     i.WriteU32 (fwd);
+    i.WriteU8 (CE); //%%
   }
 
   uint32_t
@@ -237,6 +243,7 @@ public:
     flags = i.ReadU8 ();
     ack = i.ReadU32 ();
     fwd = i.ReadU32 ();
+    CE = i.ReadU8 (); // Changes by Neha
     return GetSerializedSize ();
   }
 };
@@ -290,7 +297,8 @@ public:
     }
     retx.erase (ack - 1);
     rttHistory.erase (ack - 1);
-    return rtt;
+//cout << "Estimated rttt for ack "<<ack<<" = "<<rtt<<endl;    
+return rtt;
   }
 
   void
@@ -351,7 +359,6 @@ public:
   uint32_t begRttSeq;
   uint32_t dupackcnt;
   map< uint32_t, Ptr<Packet> > cellMap;
-
   bool wasRetransmit;
 
   queue<uint32_t> ackq;
@@ -379,7 +386,7 @@ public:
   bool
   Add ( Ptr<Packet> cell, uint32_t seq ) {
     if (tailSeq < seq && cellMap.find(seq) == cellMap.end()) {
-        cellMap[seq] = cell;
+	cellMap[seq] = cell;
         while (cellMap.find (tailSeq + 1) != cellMap.end ()) {
             ++tailSeq;
         }
@@ -464,6 +471,11 @@ public:
   PackageInflight () {
     return headSeq != highestTxSeq;
   }
+
+  bool
+  IsCongested (){
+    return Size() > 6; //Change here
+  }
 };
 
 
@@ -542,14 +554,17 @@ public:
   void ReceivedRelayCell (Ptr<E2eCircuit>, CellDirection, Ptr<Packet>);
   void ReceivedAck (Ptr<E2eCircuit>, CellDirection, E2eFdbkCellHeader);
   void ReceivedFwd (Ptr<E2eCircuit>, CellDirection, E2eFdbkCellHeader);
-  void CongestionAvoidance (Ptr<E2eSeqQueue>, Time);
+  //void CongestionAvoidance (Ptr<E2eSeqQueue>, Time);
+  void CongestionAvoidance (Ptr<E2eSeqQueue>, uint8_t); //changes here
   Ptr<E2eUdpChannel> LookupChannel (Ptr<Socket>);
 
   void SocketWriteCallback (Ptr<Socket>, uint32_t);
   void WriteCallback ();
   uint32_t FlushPendingCell (Ptr<E2eCircuit>, CellDirection,bool = false);
-  void SendFeedbackCell (Ptr<E2eCircuit>, CellDirection, uint8_t, uint32_t);
-  void PushFeedbackCell (Ptr<E2eCircuit>, CellDirection);
+  //void SendFeedbackCell (Ptr<E2eCircuit>, CellDirection, uint8_t, uint32_t);
+  void SendFeedbackCell (Ptr<E2eCircuit>, CellDirection, uint8_t, uint32_t, bool=false);
+  //void PushFeedbackCell (Ptr<E2eCircuit>, CellDirection);
+  void PushFeedbackCell (Ptr<E2eCircuit>, CellDirection, bool=false);
   void ScheduleRto (Ptr<E2eCircuit>, CellDirection, bool = false);
   void Rto (Ptr<E2eCircuit>, CellDirection);
 
