@@ -1,6 +1,6 @@
-
 #include "ns3/log.h"
 #include "tor-marut.h"
+#include <cmath>
 
 using namespace std;
 
@@ -8,8 +8,6 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("MarutTorBktapApp");
 NS_OBJECT_ENSURE_REGISTERED (MarutTorBktapApp);
-
-
 
 MarutUdpChannel::MarutUdpChannel ()
 {
@@ -404,79 +402,98 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
     }
 }
 
-
+//UPDATE cwnd for endhost (proxy node or server node)
 void
-MarutTorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, Time baseRtt)
-{
-  //Do the Vegas-thing every RTT
-  if (queue->virtRtt.cntRtt > 2)
-    {
-      Time rtt = queue->virtRtt.currentRtt;
-      double diff = queue->cwnd * (rtt.GetSeconds () - baseRtt.GetSeconds ()) / baseRtt.GetSeconds ();
-      // uint32_t target = queue->cwnd * baseRtt.GetMilliSeconds() / rtt.GetMilliSeconds();
+MarutTorBktapApp::WindowUpdate (Ptr<SeqQueue> queue, Time baseRtt) {
+			double c_diff = (queue->circ_isNegative) ? -queue->circ_diff / 10000. : queue->circ_diff / 10000.;
 
-      if (diff < VEGASALPHA)
-        {
+      if (c_diff < VEGASALPHA) {
           ++queue->cwnd;
-        }
+      }
 
-      if (diff > VEGASBETA)
-        {
+      if (c_diff > VEGASBETA) {
           --queue->cwnd;
-        }
+      }
 
-      if (queue->cwnd < 1)
-        {
+      if (queue->cwnd < 1) {
           queue->cwnd = 1;
-        }
+      }
 
-      double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds ();
+      double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds (); 
       queue->cwnd = min (queue->cwnd, (uint32_t) maxexp);
-
-      queue->virtRtt.ResetCurrRtt ();
-
-    }
-  else
-    {
-      // Vegas falls back to Reno CA, i.e. increase per RTT
-      // However, This messes up with our backlog and makes the approach too aggressive.
-    }
 }
 
 void
-MarutTorBktapApp::ReceivedFwd (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header)
-{
+MarutTorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, uint64_t packet_diff, uint8_t packet_isNegative, Time baseRtt) {
+  //Do the Vegas-thing every RTT
+  if (queue->virtRtt.cntRtt > 2) {
+      Time rtt = queue->virtRtt.currentRtt;
+      double diff = queue->cwnd * (rtt.GetSeconds () - baseRtt.GetSeconds ()) / baseRtt.GetSeconds ();
+
+			//DO NOT UPDATE QUEUE HERE. JUST CALCULATE THE DIFF FOR A CIRCUIT AND DIRECTION (QUEUE)
+			if (diff > 0) {
+		  	queue->diff = diff * 10000;
+				queue->isNegative = 0;
+			} else {
+				queue->diff	=	std::abs(diff) * 10000;
+				queue->isNegative = 1;
+			}
+
+			double c_diff = (packet_isNegative) ? -packet_diff / 10000. : packet_diff / 10000.;
+
+			c_diff = max (diff, c_diff);
+
+			if (c_diff > 0) {
+				queue->circ_diff = c_diff * 10000;
+				queue->isNegative = 0;
+			} else {
+				queue->circ_diff = std::abs(c_diff) * 10000;
+        queue->isNegative = 1;
+			}
+
+      queue->virtRtt.ResetCurrRtt ();
+  }
+  else {
+      // Vegas falls back to Reno CA, i.e. increase per RTT
+      // However, This messes up with our backlog and makes the approach too aggressive.
+  }
+}
+
+void
+MarutTorBktapApp::ReceivedFwd (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header) {
   //Received flow control feeback (FWD)
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
+
+  CellDirection oppdir = circ->GetOppositeDirection (direction);
+  Ptr<MarutUdpChannel> oppch = circ->GetChannel (oppdir);
+
   Time rtt = queue->virtRtt.EstimateRtt (header.fwd);
   ch->rttEstimator.AddSample (rtt);
 
-  if (queue->virtHeadSeq <= header.fwd)
-    {
+  if (queue->virtHeadSeq <= header.fwd) {
       queue->virtHeadSeq = header.fwd;
-    }
+  }
 
-  if (header.fwd > queue->begRttSeq)
-    {
+  if (header.fwd > queue->begRttSeq) {
       queue->begRttSeq = queue->nextTxSeq;
-      CongestionAvoidance (queue,ch->rttEstimator.baseRtt);
-      queue->ssthresh = min (queue->cwnd,queue->ssthresh);
-      queue->ssthresh = max (queue->ssthresh,queue->cwnd / 2);
-    }
-  else if (queue->cwnd <= queue->ssthresh)
-    {
+      CongestionAvoidance (queue, header.diff, header.isNegative, ch->rttEstimator.baseRtt);
+			//Only for Edge Tor Nodes
+			if (!(oppch->SpeaksCells())) {	
+					WindowUpdate(queue, ch->rttEstimator.baseRtt);
+			}
+      //queue->ssthresh = min (queue->cwnd,queue->ssthresh);
+      //queue->ssthresh = max (queue->ssthresh,queue->cwnd / 2);
+  }
+  else if (queue->cwnd <= queue->ssthresh) {
       //TODO test different slow start schemes
-    }
+  }
 
-  CellDirection oppdir = circ->GetOppositeDirection (direction);
-  ch = circ->GetChannel (oppdir);
-  Simulator::Schedule (Seconds (0), &MarutTorBktapApp::ReadCallback, this, ch->m_socket);
+  Simulator::Schedule (Seconds (0), &MarutTorBktapApp::ReadCallback, this, oppch->m_socket);
 
-  if (writeevent.IsExpired ())
-    {
+  if (writeevent.IsExpired ()) {
       writeevent = Simulator::Schedule (Seconds (0), &MarutTorBktapApp::WriteCallback, this);
-    }
+  }
 }
 
 uint32_t
@@ -562,62 +579,58 @@ MarutTorBktapApp::WriteCallback ()
 
 
 uint32_t
-MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, bool retx)
-{
+MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, bool retx) {
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
-  CellDirection oppdir = circ->GetOppositeDirection (direction);
-  Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
+  CellDirection oppdir   = circ->GetOppositeDirection (direction);
+  Ptr<MarutUdpChannel> ch  = circ->GetChannel (direction);
+  Ptr<MarutUdpChannel> oppch = circ->GetChannel (oppdir);
   Ptr<Packet> cell;
 
-  if (queue->Window () <= 0 && !retx)
-    {
+//Only check Window if NOT a MIDDLE NODE
+  if (!(ch->SpeaksCells() && oppch->SpeaksCells()) && queue->Window () <= 0 && !retx) {
       return 0;
-    }
+  }
 
-  if (retx)
-    {
+  if (retx) {
       cell = queue->GetCell (queue->headSeq);
       queue->dupackcnt = 0;
-    }
-  else
-    {
+  }
+  else {
       cell = queue->GetNextCell ();
-    }
+  }
 
-  if (cell)
-    {
+  if (cell) {
       UdpCellHeader header;
       cell->PeekHeader (header);
-      if (!ch->SpeaksCells ())
-        {
+      if (!ch->SpeaksCells ()) {
           cell->RemoveHeader (header);
-        }
+      }
 
-      if (circ->GetChannel (oppdir)->SpeaksCells ())
-        {
+//************************
+//What is this doing here?
+//Think they are ensuring its the middle node here.
+//For edge nodes data going in we use PackageRelayCell 
+      if (circ->GetChannel (oppdir)->SpeaksCells ()) {
           queue->virtRtt.SentSeq (header.seq);
           queue->actRtt.SentSeq (header.seq);
-        }
+      }
 
       ch->m_flushQueue.push (cell);
       int bytes_written = cell->GetSize ();
       ch->ScheduleFlush (m_nagle && queue->PackageInflight ());
 
-      if (ch->SpeaksCells ())
-        {
+      if (ch->SpeaksCells ()) {
           ScheduleRto (circ,direction,true);
-        }
-      else
-        {
+      }
+      else {
           queue->DiscardUpTo (header.seq + 1);
           ++queue->virtHeadSeq;
-        }
+      }
 
-      if (queue->highestTxSeq == header.seq)
-        {
+      if (queue->highestTxSeq == header.seq) {
           circ->IncrementStats (direction,0,bytes_written);
           SendFeedbackCell (circ, oppdir, FWD, queue->highestTxSeq + 1);
-        }
+      }
 
       if (!queue->WasRetransmit()) {
         m_writebucket.Decrement(bytes_written);
@@ -629,64 +642,61 @@ MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 }
 
 void
-MarutTorBktapApp::SendFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack)
-{
+MarutTorBktapApp::SendFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack) {
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
   NS_ASSERT (ch);
-  if (ch->SpeaksCells ())
-    {
-      if (flag & ACK)
-        {
+  if (ch->SpeaksCells ()) {
+      if (flag & ACK) {
           queue->ackq.push (ack);
-        }
-      if (flag & FWD)
-        {
+      }
+      if (flag & FWD) {
           queue->fwdq.push (ack);
-        }
-      if (queue->ackq.size () > 0 && queue->fwdq.size () > 0)
-        {
+      }
+      if (queue->ackq.size () > 0 && queue->fwdq.size () > 0) {
           queue->delFeedbackEvent.Cancel ();
           PushFeedbackCell (circ, direction);
-        }
-      else
-        {
+      }
+      else {
           queue->delFeedbackEvent = Simulator::Schedule (MilliSeconds (1), &MarutTorBktapApp::PushFeedbackCell, this, circ, direction);
-        }
-    }
+      }
+  }
 }
 
 void
-MarutTorBktapApp::PushFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection direction)
-{
+MarutTorBktapApp::PushFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection direction) {
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
+
+  CellDirection oppdir   = circ->GetOppositeDirection (direction);
+  Ptr<SeqQueue> oppqueue = circ->GetQueue (oppdir);
+
   NS_ASSERT (ch);
 
-  while (queue->ackq.size () > 0 || queue->fwdq.size () > 0)
-    {
+  while (queue->ackq.size () > 0 || queue->fwdq.size () > 0) {
       Ptr<Packet> cell = Create<Packet> ();
       FdbkCellHeader header;
       header.circId = circ->GetId ();
-      if (queue->ackq.size () > 0)
-        {
+      if (queue->ackq.size () > 0) {
           header.flags |= ACK;
-          while (queue->ackq.size () > 0 && header.ack < queue->ackq.front ())
-            {
+          while (queue->ackq.size () > 0 && header.ack < queue->ackq.front ()) {
               header.ack = queue->ackq.front ();
               queue->ackq.pop ();
-            }
-        }
-      if (queue->fwdq.size () > 0)
-        {
+          }
+      }
+      if (queue->fwdq.size () > 0) {
           header.flags |= FWD;
           header.fwd = queue->fwdq.front ();
           queue->fwdq.pop ();
-        }
+      }
+
+			header.diff = oppqueue->circ_diff;
+			header.isNegative = oppqueue->circ_isNegative;
+
       cell->AddHeader (header);
       ch->m_flushQueue.push (cell);
       ch->ScheduleFlush ();
-    }
+  }
 }
 
 void
