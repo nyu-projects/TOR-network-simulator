@@ -312,13 +312,17 @@ TorE2eApp::ReadFromRelay (Ptr<Socket> socket) {
               CellDirection direction = circ->GetDirection (ch);
               CellDirection oppdir = circ->GetOppositeDirection (direction);
               if (header.cellType == FDBK) {
+                cout << GetNodeName () << " Received a FDBK cell " << endl;
                   E2eFdbkCellHeader h;
                   data->RemoveHeader (h);
+                  cout << GetNodeName () << " h.flags&ACK = " <<(h.flags & ACK)<< "h.flags&FWD "<< (h.flags & FWD) << endl;
                   circ->IncrementStats (oppdir,h.GetSerializedSize (),0);
                   if (h.flags & ACK) {
-                      ReceivedAck (circ,direction,h);
+                    cout << GetNodeName () << " Calling ReceivedAck, circ->GetBytesRead(oppdir)= "<< circ->GetBytesRead(oppdir) << endl;  
+                    ReceivedAck (circ,direction,h);
                   }
                   if (h.flags & FWD) {
+                      cout << GetNodeName () << " Calling ReceivedFwd, circ->GetBytesRead(oppdir) = "<< circ->GetBytesRead(oppdir) << endl;
                       ReceivedFwd (circ,direction,h);
                   }
               }
@@ -352,6 +356,7 @@ TorE2eApp::ReceivedRelayCell (Ptr<E2eCircuit> circ, CellDirection direction, Ptr
 void
 TorE2eApp::ReceivedAck (Ptr<E2eCircuit> circ, CellDirection direction, E2eFdbkCellHeader header) {
   Ptr<E2eSeqQueue> queue = circ->GetQueue (direction);
+  cout << GetNodeName () << " Received Ack Cell, header.ack = " << header.ack << " , queue-> headSeq = " << queue->headSeq << endl;
   if (header.ack == queue->headSeq) {
       // DupACK. Do fast retransmit.
       ++queue->dupackcnt;
@@ -418,7 +423,6 @@ TorE2eApp::ReceivedFwd (Ptr<E2eCircuit> circ, CellDirection direction, E2eFdbkCe
 
   CellDirection oppdir = circ->GetOppositeDirection (direction);
   Ptr<E2eUdpChannel> oppch = circ->GetChannel (oppdir);
-
 	//Changes
   if (oppch->SpeaksCells ()) {
     cout << GetNodeName () << " Relaying Feedback Cell" << endl;
@@ -559,8 +563,9 @@ uint32_t TorE2eApp::FlushPendingCell (Ptr<E2eCircuit> circ, CellDirection direct
   Ptr<Packet> cell;
 
   //Only check window if not a middle node
-  if ((ch->SpeaksCells() && oppch->SpeaksCells()) && queue->Window () <= 0 && !retx) {
-      return 0;
+  if (!(ch->SpeaksCells() && oppch->SpeaksCells()) && queue->Window () <= 0 && !retx) {
+    cout << GetNodeName () << " Check window, queue->Window () =" << queue ->Window () << " nextTxSeq = "<< queue->nextTxSeq <<" virtHeadSeq = "<< queue->virtHeadSeq << endl;  
+    return 0;
   }
 
   if (retx) {
