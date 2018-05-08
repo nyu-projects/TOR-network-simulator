@@ -3,6 +3,7 @@
 
 #include "tor-base.h"
 #include "cell-header.h"
+#include "bktap-base.h"
 
 #include "ns3/point-to-point-net-device.h"
 
@@ -20,7 +21,7 @@ namespace ns3 {
 class BktapCircuit;
 class UdpChannel;
 
-
+/*
 class BaseCellHeader : public Header
 {
 public:
@@ -489,7 +490,7 @@ public:
   }
 
 };
-
+*/
 
 
 class UdpChannel : public SimpleRefCount<UdpChannel>
@@ -517,11 +518,6 @@ public:
 };
 
 
-
-
-
-
-
 class BktapCircuit : public BaseCircuit
 {
 public:
@@ -538,8 +534,6 @@ public:
   Ptr<SeqQueue> GetQueue (CellDirection);
   Ptr<UdpChannel> GetChannel (CellDirection direction);
 };
-
-
 
 
 class TorBktapApp : public TorBaseApp
