@@ -64,7 +64,7 @@ int main (int argc, char *argv[]) {
     m_startTime->SetAttribute ("Max", DoubleValue (30.0));
     th.SetStartTimeStream (m_startTime);
 
-    th.ParseFile ("circuits-10000c100r-20150804.dat",1,0.); // parse scenario from file
+    th.ParseFile ("circuits-1c3r-20180507.dat",1,0.); // parse scenario from file
     th.PrintCircuits();
     th.BuildTopology(); // finally build topology, setup relays and seed circuits
 
