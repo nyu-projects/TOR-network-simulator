@@ -200,19 +200,16 @@ TorDumbbellHelper::RegisterTtlbCallback (void (*ttlb)(int, double, string))
 
 
 void
-TorDumbbellHelper::ParseFile (string filename, uint32_t m, double bulkFraction)
-{
+TorDumbbellHelper::ParseFile (string filename, uint32_t m, double bulkFraction) {
   ifstream f (filename.c_str ());
   NS_ASSERT (f.is_open ());
 
   set<uint32_t> chosenCircuits;
-  if (m > 0)
-    {
+  if (m > 0) {
       string line;
       uint32_t n;
-      for (n = 0; getline (f, line); ++n)
-        {
-        }
+      for (n = 0; getline (f, line); ++n) {
+      }
       NS_ASSERT (m <= n);
       while (chosenCircuits.size () < m)
         {
@@ -220,7 +217,7 @@ TorDumbbellHelper::ParseFile (string filename, uint32_t m, double bulkFraction)
         }
       f.close ();
       f.open (filename.c_str ());
-    }
+  }
 
   uint32_t nBulkclients = ceil (bulkFraction * m);
 
