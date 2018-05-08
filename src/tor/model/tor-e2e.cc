@@ -312,17 +312,17 @@ TorE2eApp::ReadFromRelay (Ptr<Socket> socket) {
               CellDirection direction = circ->GetDirection (ch);
               CellDirection oppdir = circ->GetOppositeDirection (direction);
               if (header.cellType == FDBK) {
-                cout << GetNodeName () << " Received a FDBK cell " << endl;
+                //cout << GetNodeName () << " Received a FDBK cell " << endl;
                   E2eFdbkCellHeader h;
                   data->RemoveHeader (h);
-                  cout << GetNodeName () << " h.flags&ACK = " <<(h.flags & ACK)<< "h.flags&FWD "<< (h.flags & FWD) << endl;
+                  //cout << GetNodeName () << " h.flags&ACK = " <<(h.flags & ACK)<< "h.flags&FWD "<< (h.flags & FWD) << endl;
                   circ->IncrementStats (oppdir,h.GetSerializedSize (),0);
                   if (h.flags & ACK) {
-                    cout << GetNodeName () << " Calling ReceivedAck, circ->GetBytesRead(oppdir)= "<< circ->GetBytesRead(oppdir) << endl;  
+                    //cout << GetNodeName () << " Calling ReceivedAck, circ->GetBytesRead(oppdir)= "<< circ->GetBytesRead(oppdir) << endl;  
                     ReceivedAck (circ,direction,h);
                   }
                   if (h.flags & FWD) {
-                      cout << GetNodeName () << " Calling ReceivedFwd, circ->GetBytesRead(oppdir) = "<< circ->GetBytesRead(oppdir) << endl;
+                      //cout << GetNodeName () << " Calling ReceivedFwd, circ->GetBytesRead(oppdir) = "<< circ->GetBytesRead(oppdir) << endl;
                       ReceivedFwd (circ,direction,h);
                   }
               }
@@ -344,19 +344,24 @@ TorE2eApp::ReceivedRelayCell (Ptr<E2eCircuit> circ, CellDirection direction, Ptr
   Ptr<E2eSeqQueue> queue = circ->GetQueue (direction);
   E2eUdpCellHeader header;
   cell->PeekHeader (header);
+  if (queue->IsCongested()){
+    cell->RemoveHeader(header);
+    header.ECN = 1;
+    cell->AddHeader(header);
+  }
   bool newseq = queue->Add (cell, header.seq);
   if (newseq) {
     m_readbucket.Decrement(cell->GetSize());
   }
   CellDirection oppdir = circ->GetOppositeDirection (direction);
-  SendFeedbackCell (circ, oppdir, ACK, queue->tailSeq + 1);
+  SendFeedbackCell (circ, oppdir, ACK, queue->tailSeq + 1, false);
 }
 
 
 void
 TorE2eApp::ReceivedAck (Ptr<E2eCircuit> circ, CellDirection direction, E2eFdbkCellHeader header) {
   Ptr<E2eSeqQueue> queue = circ->GetQueue (direction);
-  cout << GetNodeName () << " Received Ack Cell, header.ack = " << header.ack << " , queue-> headSeq = " << queue->headSeq << endl;
+  //cout << GetNodeName () << " Received Ack Cell, header.ack = " << header.ack << " , queue-> headSeq = " << queue->headSeq << endl;
   if (header.ack == queue->headSeq) {
       // DupACK. Do fast retransmit.
       ++queue->dupackcnt;
@@ -383,27 +388,37 @@ TorE2eApp::ReceivedAck (Ptr<E2eCircuit> circ, CellDirection direction, E2eFdbkCe
 
 
 void
-TorE2eApp::CongestionAvoidance (Ptr<E2eSeqQueue> queue, Time baseRtt) {
+TorE2eApp::CongestionAvoidance (Ptr<E2eSeqQueue> queue, uint8_t CE) {
   //Do the Vegas-thing every RTT
   if (queue->virtRtt.cntRtt > 2) {
       Time rtt = queue->virtRtt.currentRtt;
-      double diff = queue->cwnd * (rtt.GetSeconds () - baseRtt.GetSeconds ()) / baseRtt.GetSeconds ();
+      //double diff = queue->cwnd * (rtt.GetSeconds () - baseRtt.GetSeconds ()) / baseRtt.GetSeconds ();
       // uint32_t target = queue->cwnd * baseRtt.GetMilliSeconds() / rtt.GetMilliSeconds();
 
-      if (diff < VEGASALPHA) {
-          ++queue->cwnd;
+      //if (diff < VEGASALPHA) {
+       //   ++queue->cwnd;
+      //}
+
+      //if (diff > VEGASBETA) {
+        //  --queue->cwnd;
+      //}
+
+      //if (queue->cwnd < 1) {
+        //  queue->cwnd = 1;
+      //}
+
+      //double alpha = queue->;
+      //DataRateValue d;
+      //this -> GetAttribute("BandwidthRate",d); 
+      //cout<< "d="<<d<<endl;
+	if (CE > 0){
+         --queue->cwnd;
+      } else {
+         ++queue->cwnd;
       }
 
-      if (diff > VEGASBETA) {
-          --queue->cwnd;
-      }
-
-      if (queue->cwnd < 1) {
-          queue->cwnd = 1;
-      }
-
-      double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds ();
-      queue->cwnd = min (queue->cwnd, (uint32_t) maxexp);
+      //double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds ();
+      //queue->cwnd = min (queue->cwnd, (uint32_t) maxexp);
 
       queue->virtRtt.ResetCurrRtt ();
   }
@@ -416,7 +431,7 @@ TorE2eApp::CongestionAvoidance (Ptr<E2eSeqQueue> queue, Time baseRtt) {
 void
 TorE2eApp::ReceivedFwd (Ptr<E2eCircuit> circ, CellDirection direction, E2eFdbkCellHeader header)
 {
-  cout << GetNodeName () << " Received Feedback Cell" << endl;
+  //cout << GetNodeName () << " Received Feedback Cell" << endl;
   //Received flow control feedback (FWD)
   Ptr<E2eSeqQueue> queue = circ->GetQueue (direction);
   Ptr<E2eUdpChannel> ch = circ->GetChannel (direction);
@@ -425,20 +440,20 @@ TorE2eApp::ReceivedFwd (Ptr<E2eCircuit> circ, CellDirection direction, E2eFdbkCe
   Ptr<E2eUdpChannel> oppch = circ->GetChannel (oppdir);
 	//Changes
   if (oppch->SpeaksCells ()) {
-    cout << GetNodeName () << " Relaying Feedback Cell" << endl;
-  	SendFeedbackCell (circ, oppdir, FWD, header.fwd);
+    //cout << GetNodeName () << " Relaying Feedback Cell" << endl;
+  	SendFeedbackCell (circ, oppdir, FWD, header.fwd, header.CE==1);
   }
   else {
-    cout << GetNodeName () << " Updating queue congestion window" << endl;
-    cout << GetNodeName () << " cwnd:" << queue->cwnd << endl;
-	  cout << GetNodeName () << " nextTxSeq:" << queue->nextTxSeq << endl;
-		cout << GetNodeName () << " highestTxSeq:" << queue->highestTxSeq << endl;
-		cout << GetNodeName () << " tailSeq:" << queue->tailSeq << endl;
-		cout << GetNodeName () << " headSeq:" << queue->headSeq << endl;
-		cout << GetNodeName () << " virtHeadSeq:" << queue->virtHeadSeq << endl;
-		cout << GetNodeName () << " begRttSeq:" << queue->begRttSeq << endl;
-		cout << GetNodeName () << " ssthresh:" << queue->ssthresh << endl;
-		cout << GetNodeName () << " dupackcnt:" << queue->dupackcnt << endl;
+    //cout << GetNodeName () << " Updating queue congestion window" << endl;
+    //cout << GetNodeName () << " cwnd:" << queue->cwnd << endl;
+	  //cout << GetNodeName () << " nextTxSeq:" << queue->nextTxSeq << endl;
+		//cout << GetNodeName () << " highestTxSeq:" << queue->highestTxSeq << endl;
+		//cout << GetNodeName () << " tailSeq:" << queue->tailSeq << endl;
+		//cout << GetNodeName () << " headSeq:" << queue->headSeq << endl;
+		//cout << GetNodeName () << " virtHeadSeq:" << queue->virtHeadSeq << endl;
+		//cout << GetNodeName () << " begRttSeq:" << queue->begRttSeq << endl;
+		//cout << GetNodeName () << " ssthresh:" << queue->ssthresh << endl;
+		//cout << GetNodeName () << " dupackcnt:" << queue->dupackcnt << endl;
 
   	Time rtt = queue->virtRtt.EstimateRtt (header.fwd);
   	ch->rttEstimator.AddSample (rtt);
@@ -449,24 +464,24 @@ TorE2eApp::ReceivedFwd (Ptr<E2eCircuit> circ, CellDirection direction, E2eFdbkCe
 
   	if (header.fwd > queue->begRttSeq){
       queue->begRttSeq = queue->nextTxSeq;
-      CongestionAvoidance (queue,ch->rttEstimator.baseRtt);
+      CongestionAvoidance (queue,header.CE);
       queue->ssthresh = min (queue->cwnd,queue->ssthresh);
       queue->ssthresh = max (queue->ssthresh,queue->cwnd / 2);
     }
   	else if (queue->cwnd <= queue->ssthresh){
       //TODO test different slow start schemes
     }
-		cout << GetNodeName () << " After Update" << endl;
-    cout << GetNodeName () << " cwnd:" << queue->cwnd << endl;
-    cout << GetNodeName () << " nextTxSeq:" << queue->nextTxSeq << endl;
-    cout << GetNodeName () << " highestTxSeq:" << queue->highestTxSeq << endl;
-    cout << GetNodeName () << " tailSeq:" << queue->tailSeq << endl;
-    cout << GetNodeName () << " headSeq:" << queue->headSeq << endl;
-    cout << GetNodeName () << " virtHeadSeq:" << queue->virtHeadSeq << endl;
-    cout << GetNodeName () << " begRttSeq:" << queue->begRttSeq << endl;
-    cout << GetNodeName () << " ssthresh:" << queue->ssthresh << endl;
-    cout << GetNodeName () << " dupackcnt:" << queue->dupackcnt << endl;
-	  cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
+		//cout << GetNodeName () << " After Update" << endl;
+    //cout << GetNodeName () << " cwnd:" << queue->cwnd << endl;
+    //cout << GetNodeName () << " nextTxSeq:" << queue->nextTxSeq << endl;
+    //cout << GetNodeName () << " highestTxSeq:" << queue->highestTxSeq << endl;
+    //cout << GetNodeName () << " tailSeq:" << queue->tailSeq << endl;
+    //cout << GetNodeName () << " headSeq:" << queue->headSeq << endl;
+    //cout << GetNodeName () << " virtHeadSeq:" << queue->virtHeadSeq << endl;
+    //cout << GetNodeName () << " begRttSeq:" << queue->begRttSeq << endl;
+    //cout << GetNodeName () << " ssthresh:" << queue->ssthresh << endl;
+    //cout << GetNodeName () << " dupackcnt:" << queue->dupackcnt << endl;
+	  //cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
 	}
 
 //	ch = circ->GetChannel (oppdir);
@@ -564,7 +579,7 @@ uint32_t TorE2eApp::FlushPendingCell (Ptr<E2eCircuit> circ, CellDirection direct
 
   //Only check window if not a middle node
   if (!(ch->SpeaksCells() && oppch->SpeaksCells()) && queue->Window () <= 0 && !retx) {
-    cout << GetNodeName () << " Check window, queue->Window () =" << queue ->Window () << " nextTxSeq = "<< queue->nextTxSeq <<" virtHeadSeq = "<< queue->virtHeadSeq << endl;  
+    //cout << GetNodeName () << " Check window, queue->Window () =" << queue ->Window () << " nextTxSeq = "<< queue->nextTxSeq <<" virtHeadSeq = "<< queue->virtHeadSeq << endl;  
     return 0;
   }
 
@@ -606,7 +621,7 @@ uint32_t TorE2eApp::FlushPendingCell (Ptr<E2eCircuit> circ, CellDirection direct
 //Only send Feedback cells if you are an edge node and sending inside tor
 //What feedback cell seq number should we send?
           if (!ch->SpeaksCells ()) {
-            SendFeedbackCell (circ, oppdir, FWD, queue->highestTxSeq + 1);
+            SendFeedbackCell (circ, oppdir, FWD, queue->highestTxSeq + 1, header.ECN==1);
           }
       }
       if (!queue->WasRetransmit()) {
@@ -618,7 +633,7 @@ uint32_t TorE2eApp::FlushPendingCell (Ptr<E2eCircuit> circ, CellDirection direct
 }
 
 void
-TorE2eApp::SendFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack)
+TorE2eApp::SendFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack, bool isECN)
 {
   Ptr<E2eUdpChannel> ch = circ->GetChannel (direction);
   Ptr<E2eSeqQueue> queue = circ->GetQueue (direction);
@@ -631,23 +646,23 @@ TorE2eApp::SendFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction, uint
         }
       if (flag & FWD)
         {
-          cout << GetNodeName () << " Sending Feedback Cell" << endl;
+          //cout << GetNodeName () << " Sending Feedback Cell" << endl;
           queue->fwdq.push (ack);
         }
       if (queue->ackq.size () > 0 && queue->fwdq.size () > 0)
         {
           queue->delFeedbackEvent.Cancel ();
-          PushFeedbackCell (circ, direction);
+          PushFeedbackCell (circ, direction,isECN);
         }
       else
         {
-          queue->delFeedbackEvent = Simulator::Schedule (MilliSeconds (1), &TorE2eApp::PushFeedbackCell, this, circ, direction);
+          queue->delFeedbackEvent = Simulator::Schedule (MilliSeconds (1), &TorE2eApp::PushFeedbackCell, this, circ, direction, isECN);
         }
     }
 }
 
 void
-TorE2eApp::PushFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction)
+TorE2eApp::PushFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction, bool isECN)
 {
   Ptr<E2eUdpChannel> ch = circ->GetChannel (direction);
   Ptr<E2eSeqQueue> queue = circ->GetQueue (direction);
@@ -671,6 +686,9 @@ TorE2eApp::PushFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction)
         {
           header.flags |= FWD;
           header.fwd = queue->fwdq.front ();
+	  if (isECN) {
+	    header.CE = 1;
+	  }
           queue->fwdq.pop ();
         }
       cell->AddHeader (header);
