@@ -370,7 +370,7 @@ public:
   EventId retxEvent;
 
   E2eSeqQueue () {
-    cwnd = 100;
+    cwnd = 6;
     nextTxSeq = 1;
     highestTxSeq = 0;
     tailSeq = 0;

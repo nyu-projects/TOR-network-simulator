@@ -411,7 +411,7 @@ TorE2eApp::CongestionAvoidance (Ptr<E2eSeqQueue> queue, uint8_t CE) {
       //DataRateValue d;
       //this -> GetAttribute("BandwidthRate",d); 
       //cout<< "d="<<d<<endl;
-	if (CE > 0){
+	    if (CE > 0){
          --queue->cwnd;
       } else {
          ++queue->cwnd;
@@ -662,14 +662,12 @@ TorE2eApp::SendFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction, uint
 }
 
 void
-TorE2eApp::PushFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction, bool isECN)
-{
+TorE2eApp::PushFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction, bool isECN) {
   Ptr<E2eUdpChannel> ch = circ->GetChannel (direction);
   Ptr<E2eSeqQueue> queue = circ->GetQueue (direction);
   NS_ASSERT (ch);
 
-  while (queue->ackq.size () > 0 || queue->fwdq.size () > 0)
-    {
+  while (queue->ackq.size () > 0 || queue->fwdq.size () > 0) {
       Ptr<Packet> cell = Create<Packet> ();
       E2eFdbkCellHeader header;
       header.circId = circ->GetId ();
@@ -682,19 +680,18 @@ TorE2eApp::PushFeedbackCell (Ptr<E2eCircuit> circ, CellDirection direction, bool
               queue->ackq.pop ();
             }
         }
-      if (queue->fwdq.size () > 0)
-        {
+      if (queue->fwdq.size () > 0) {
           header.flags |= FWD;
           header.fwd = queue->fwdq.front ();
-	  if (isECN) {
-	    header.CE = 1;
-	  }
+    	    if (isECN) {
+	          header.CE = 1;
+    	    }
           queue->fwdq.pop ();
-        }
+      }
       cell->AddHeader (header);
       ch->m_flushQueue.push (cell);
       ch->ScheduleFlush ();
-    }
+  }
 }
 
 void
