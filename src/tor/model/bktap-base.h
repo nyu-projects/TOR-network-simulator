@@ -167,12 +167,12 @@ public:
   uint32_t ack;
   uint32_t fwd;
   uint64_t diff;
-  uint8_t  isNegative;
+//  uint8_t  isNegative;
 
   FdbkCellHeader ()
   {
     circId = flags = ack = fwd = 0;
-    diff = isNegative = 0;
+//    diff = isNegative = 0;
     cellType = FDBK;
   }
 
@@ -206,13 +206,14 @@ public:
         os << " FWD";
       }
     os <<" diff= "<< diff;
-    os <<" isNegative= "<<isNegative;
+//    os <<" isNegative= "<<isNegative;
   }
 
   uint32_t
   GetSerializedSize () const
   {
-    return  (2 + 1 + 1 + 4 + 4 + 8 + 1);
+    //return  (2 + 1 + 1 + 4 + 4 + 8 + 1);
+    return  (2 + 1 + 1 + 4 + 4 + 8);
   }
 
   void
@@ -225,7 +226,7 @@ public:
     i.WriteU32 (ack);
     i.WriteU32 (fwd);
     i.WriteU64 (diff);
-    i.WriteU8 (isNegative);
+//    i.WriteU8 (isNegative);
   }
 
   uint32_t
@@ -238,7 +239,7 @@ public:
     ack = i.ReadU32 ();
     fwd = i.ReadU32 ();
     diff = i.ReadU64 ();
-    isNegative = i.ReadU8 ();
+//    isNegative = i.ReadU8 ();
     return GetSerializedSize ();
   }
 };
@@ -349,10 +350,10 @@ class SeqQueue : public SimpleRefCount<SeqQueue>
 public:
   uint32_t cwnd;
   uint64_t diff;
-  uint8_t  isNegative;
+//  uint8_t  isNegative;
 
   uint64_t circ_diff;
-  uint8_t  circ_isNegative;
+//  uint8_t  circ_isNegative;
 
   uint32_t ssthresh;
   uint32_t nextTxSeq;
@@ -378,9 +379,9 @@ public:
   {
     cwnd = 6;
     diff = 0;
-    isNegative = 0;
+//    isNegative = 0;
     circ_diff = 0;
-    circ_isNegative = 0;
+//    circ_isNegative = 0;
 
     nextTxSeq = 1;
     highestTxSeq = 0;
