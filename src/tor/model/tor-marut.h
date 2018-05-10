@@ -256,8 +256,8 @@ public:
   void ReceivedRelayCell (Ptr<MarutBktapCircuit>, CellDirection, Ptr<Packet>);
   void ReceivedAck (Ptr<MarutBktapCircuit>, CellDirection, FdbkCellHeader);
   void ReceivedFwd (Ptr<MarutBktapCircuit>, CellDirection, FdbkCellHeader);
-  void CongestionAvoidance (Ptr<MarutSeqQueue>, uint64_t, uint8_t, Time);
-  void WindowUpdate (Ptr<MarutSeqQueue>, Time);
+  void CongestionAvoidance (Ptr<MarutSeqQueue>, uint64_t, Time,uint16_t, CellDirection);
+  void WindowUpdate (Ptr<MarutSeqQueue>, Time, uint16_t, CellDirection);
 
 
   Ptr<MarutUdpChannel> LookupChannel (Ptr<Socket>);

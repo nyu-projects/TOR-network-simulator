@@ -406,8 +406,7 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
 
 //UPDATE cwnd for endhost (proxy node or server node)
 void
-MarutTorBktapApp::WindowUpdate (Ptr<MarutSeqQueue> queue, Time baseRtt) {
-			double c_diff = (queue->circ_isNegative) ? -queue->circ_diff / 10000. : queue->circ_diff / 10000.;
+MarutTorBktapApp::WindowUpdate (Ptr<MarutSeqQueue> queue, Time baseRtt, uint16_t circ_id, CellDirection direction) {
 //   if (queue->virtRtt.cntRtt > 2) {
 //  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] <<", Updating Window, cwnd=" << queue->cwnd << ", Circuit Diff:"  << queue->circ_diff << ", " <<  queue->circ_diff / 10000. << endl;
   double c_diff = queue->circ_diff / 10000.;
@@ -431,7 +430,7 @@ MarutTorBktapApp::WindowUpdate (Ptr<MarutSeqQueue> queue, Time baseRtt) {
 }
 
 void
-MarutTorBktapApp::CongestionAvoidance (Ptr<MarutSeqQueue> queue, uint64_t packet_diff, uint8_t packet_isNegative, Time baseRtt) {
+MarutTorBktapApp::CongestionAvoidance (Ptr<MarutSeqQueue> queue, uint64_t packet_diff, Time baseRtt, uint16_t circ_id, CellDirection direction) {
  //Do the Vegas-thing every RTT
 //  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << ", Updating congestion, circ_diff=" << queue->circ_diff << endl;
 //  if (queue->virtRtt.cntRtt > 2) {
