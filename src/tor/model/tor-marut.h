@@ -258,7 +258,7 @@ public:
   void ReceivedFwd (Ptr<MarutBktapCircuit>, CellDirection, FdbkCellHeader);
   void CongestionAvoidance (Ptr<MarutSeqQueue>, uint64_t, uint8_t, Time);
   void WindowUpdate (Ptr<MarutSeqQueue>, Time);
-	
+
 
   Ptr<MarutUdpChannel> LookupChannel (Ptr<Socket>);
 

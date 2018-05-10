@@ -29,6 +29,14 @@ enum CellDirection
   INBOUND, OUTBOUND
 };
 
+/*
+std::string CellDirectionArray[2] =
+{
+      "INBOUND",
+      "OUTBOUND"
+};
+*/
+
 // TODO private
 class TorBaseApp : public Application
 {

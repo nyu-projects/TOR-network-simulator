@@ -16,8 +16,7 @@ int main (int argc, char *argv[]) {
     Time simTime = Time("90s");
     //string flavor = "vanilla";
     string flavor = "bktap";
-    //string flavor   = "n23";
-    //string flavor = "marut";
+   //string flavor = "marut";
 
     CommandLine cmd;
     cmd.AddValue("run", "run number", run);
@@ -68,8 +67,9 @@ int main (int argc, char *argv[]) {
     th.SetStartTimeStream (m_startTime);
 
     //th.ParseFile ("circuits-1c3r-20180507.dat",1,0.); // parse scenario from file
-    th.ParseFile ("circuits-10000c100r-20150804.dat",100,0.5);
-
+    //th.ParseFile ("circuits-10000c100r-20150804.dat",100,0.1);
+    //th.ParseFile ("circuits-2c4r-20150804.dat",2,0.);
+    th.ParseFile ("circuits-20c22r-20150804.dat",20,0.5);
     th.PrintCircuits();
     th.BuildTopology(); // finally build topology, setup relays and seed circuits
 
@@ -113,7 +113,6 @@ void StatsCallback(TorDumbbellHelper* th, Time simTime) {
       //cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(OUTBOUND) << " " << proxyCirc->GetBytesWritten(OUTBOUND) << endl;
       //cout <<"Middle Node: "<< middleCirc->GetBytesRead(OUTBOUND) << " " << middleCirc->GetBytesWritten(OUTBOUND) << endl;
       //cout <<"Exit Node: "<< exitCirc->GetBytesRead(OUTBOUND) << " " << exitCirc->GetBytesWritten(OUTBOUND) << endl;
-
       //proxyCirc->ResetStats(); exitCirc->ResetStats();
     }
     cout << endl;

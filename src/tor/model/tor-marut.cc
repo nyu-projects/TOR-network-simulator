@@ -6,6 +6,13 @@ using namespace std;
 
 namespace ns3 {
 
+  std::string CellDirectionArray[2] =
+  {
+          "INBOUND",
+                "OUTBOUND"
+  };
+
+
 NS_LOG_COMPONENT_DEFINE ("MarutTorBktapApp");
 NS_OBJECT_ENSURE_REGISTERED (MarutTorBktapApp);
 
@@ -306,41 +313,34 @@ MarutTorBktapApp::ReadCallback (Ptr<Socket> socket)
 }
 
 uint32_t
-MarutTorBktapApp::ReadFromRelay (Ptr<Socket> socket)
-{
+MarutTorBktapApp::ReadFromRelay (Ptr<Socket> socket) {
   uint32_t read_bytes = 0;
-  while (socket->GetRxAvailable () > 0)
-    {
+  while (socket->GetRxAvailable () > 0) {
       Ptr<Packet> data;
       Address from;
-      if (data = socket->RecvFrom (from))
-        {
+      if (data = socket->RecvFrom (from)) {
           data->RemoveAllPacketTags (); //Fix for ns3 PacketTag Bug
           read_bytes += data->GetSize ();
           Ptr<MarutUdpChannel> ch = channels[from];
           NS_ASSERT (ch);
-          while (data->GetSize () > 0)
-            {
+          while (data->GetSize () > 0) {
               BaseCellHeader header;
               data->PeekHeader (header);
               Ptr<MarutBktapCircuit> circ = circuits[header.circId];
               NS_ASSERT (circ);
               CellDirection direction = circ->GetDirection (ch);
               CellDirection oppdir = circ->GetOppositeDirection (direction);
-              if (header.cellType == FDBK)
-                {
+              if (header.cellType == FDBK) {
                   FdbkCellHeader h;
                   data->RemoveHeader (h);
                   circ->IncrementStats (oppdir,h.GetSerializedSize (),0);
-                  if (h.flags & ACK)
-                    {
+                  if (h.flags & ACK) {
                       ReceivedAck (circ,direction,h);
-                    }
-                  if (h.flags & FWD)
-                    {
+                  }
+                  if (h.flags & FWD) {
                       ReceivedFwd (circ,direction,h);
-                    }
-                }
+                  }
+              }
               else
                 {
                   Ptr<Packet> cell = data->CreateFragment (0,CELL_PAYLOAD_SIZE + UDP_CELL_HEADER_SIZE);
@@ -357,8 +357,9 @@ MarutTorBktapApp::ReadFromRelay (Ptr<Socket> socket)
 void
 MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, Ptr<Packet> cell)
 {
-  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
-  UdpCellHeader header;
+ Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
+ //cout << "Node: " << GetNodeName() << " Received Relay Cell " << endl;
+ UdpCellHeader header;
   cell->PeekHeader (header);
   bool newseq = queue->Add (cell, header.seq);
   if (newseq) {
@@ -372,8 +373,9 @@ MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection 
 void
 MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header)
 {
-  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
-  if (header.ack == queue->headSeq)
+ Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
+//  cout << "Node: " << GetNodeName() << " Received Ack " << endl;
+ if (header.ack == queue->headSeq)
     {
       // DupACK. Do fast retransmit.
       ++queue->dupackcnt;
@@ -406,61 +408,65 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
 void
 MarutTorBktapApp::WindowUpdate (Ptr<MarutSeqQueue> queue, Time baseRtt) {
 			double c_diff = (queue->circ_isNegative) ? -queue->circ_diff / 10000. : queue->circ_diff / 10000.;
+//   if (queue->virtRtt.cntRtt > 2) {
+//  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] <<", Updating Window, cwnd=" << queue->cwnd << ", Circuit Diff:"  << queue->circ_diff << ", " <<  queue->circ_diff / 10000. << endl;
+  double c_diff = queue->circ_diff / 10000.;
+>>>>>>> e5e47c18fec1262043bcc3a2bfcbc480bb0b34b4
 
-      if (c_diff < VEGASALPHA) {
-          ++queue->cwnd;
-      }
+  if (c_diff < VEGASALPHA) {
+      ++queue->cwnd;
+  }
 
-      if (c_diff > VEGASBETA) {
-          --queue->cwnd;
-      }
+  if (c_diff > VEGASBETA) {
+      --queue->cwnd;
+  }
 
-      if (queue->cwnd < 1) {
-          queue->cwnd = 1;
-      }
+  if (queue->cwnd < 1) {
+      queue->cwnd = 1;
+  }
 
-      double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds (); 
-      queue->cwnd = min (queue->cwnd, (uint32_t) maxexp);
+  double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds (); 
+  queue->cwnd = min (queue->cwnd, (uint32_t) maxexp);
+
+//  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << ", Updated Window, cwnd=" << queue->cwnd << endl;
+//   }
 }
 
 void
 MarutTorBktapApp::CongestionAvoidance (Ptr<MarutSeqQueue> queue, uint64_t packet_diff, uint8_t packet_isNegative, Time baseRtt) {
-  //Do the Vegas-thing every RTT
-  if (queue->virtRtt.cntRtt > 2) {
+ //Do the Vegas-thing every RTT
+//  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << ", Updating congestion, circ_diff=" << queue->circ_diff << endl;
+//  if (queue->virtRtt.cntRtt > 2) {
       Time rtt = queue->virtRtt.currentRtt;
       double diff = queue->cwnd * (rtt.GetSeconds () - baseRtt.GetSeconds ()) / baseRtt.GetSeconds ();
 
+//      cout << "Node: " << GetNodeName() << ", diff=" << diff << endl;
 			//DO NOT UPDATE QUEUE HERE. JUST CALCULATE THE DIFF FOR A CIRCUIT AND DIRECTION (QUEUE)
-			if (diff > 0) {
-		  	queue->diff = diff * 10000;
-				queue->isNegative = 0;
-			} else {
-				queue->diff	=	std::abs(diff) * 10000;
-				queue->isNegative = 1;
-			}
 
-			double c_diff = (packet_isNegative) ? -packet_diff / 10000. : packet_diff / 10000.;
+      queue->diff = diff * 10000;
+//      cout << "Node: " << GetNodeName() << ", queue->diff=" << queue->diff << endl;
+//  }
 
-			c_diff = max (diff, c_diff);
+			double c_diff = packet_diff / 10000.;
+//      cout << "Node: " << GetNodeName() << ", packet c_diff=" << c_diff << endl;
+  
+			c_diff = max (queue->diff / 10000., c_diff);
 
-			if (c_diff > 0) {
-				queue->circ_diff = c_diff * 10000;
-				queue->isNegative = 0;
-			} else {
-				queue->circ_diff = std::abs(c_diff) * 10000;
-        queue->isNegative = 1;
-			}
+//      cout << "Node: " << GetNodeName() << ", actual c_diff=" << c_diff << endl;
+
+  		queue->circ_diff = c_diff * 10000;	
 
       queue->virtRtt.ResetCurrRtt ();
-  }
-  else {
+
+//      cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << " Updated congestion, circ_diff=" << queue->circ_diff << endl;
+//  }
       // Vegas falls back to Reno CA, i.e. increase per RTT
       // However, This messes up with our backlog and makes the approach too aggressive.
-  }
 }
 
 void
 MarutTorBktapApp::ReceivedFwd (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header) {
+//  cout << "Node: " << GetNodeName() << " Received Fwd Cell" << endl;
   //Received flow control feeback (FWD)
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
@@ -477,10 +483,10 @@ MarutTorBktapApp::ReceivedFwd (Ptr<MarutBktapCircuit> circ, CellDirection direct
 
   if (header.fwd > queue->begRttSeq) {
       queue->begRttSeq = queue->nextTxSeq;
-      CongestionAvoidance (queue, header.diff, header.isNegative, ch->rttEstimator.baseRtt);
+      CongestionAvoidance (queue, header.diff, ch->rttEstimator.baseRtt, circ->GetId (), direction);
 			//Only for Edge Tor Nodes
 			if (!(oppch->SpeaksCells())) {	
-					WindowUpdate(queue, ch->rttEstimator.baseRtt);
+					WindowUpdate(queue, ch->rttEstimator.baseRtt, circ->GetId (), direction);
 			}
       //queue->ssthresh = min (queue->cwnd,queue->ssthresh);
       //queue->ssthresh = max (queue->ssthresh,queue->cwnd / 2);
@@ -528,6 +534,7 @@ MarutTorBktapApp::ReadFromEdge (Ptr<Socket> socket)
 void
 MarutTorBktapApp::PackageRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, Ptr<Packet> cell)
 {
+//  cout << "Node: " << GetNodeName() << " Relay Cell Packaged " << endl;
   UdpCellHeader header;
   header.circId = circ->GetId ();
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
@@ -581,13 +588,17 @@ MarutTorBktapApp::WriteCallback ()
 uint32_t
 MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, bool retx) {
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
+//  cout << "Node: " << GetNodeName() << ", Flush Pending Cell" << endl;
+
   CellDirection oppdir   = circ->GetOppositeDirection (direction);
   Ptr<MarutUdpChannel> ch  = circ->GetChannel (direction);
   Ptr<MarutUdpChannel> oppch = circ->GetChannel (oppdir);
   Ptr<Packet> cell;
 
-//Only check Window if NOT a MIDDLE NODE
+//Only check Window if NOT a MIDDLE NODE. 
+//ToDo:Should we also add a check (!ch->SpeaksCells() && oppch->SpeaksCells())
   if (!(ch->SpeaksCells() && oppch->SpeaksCells()) && queue->Window () <= 0 && !retx) {
+//      cout << "Node: " << GetNodeName() << ", Edge Node with window less than 0" << endl;
       return 0;
   }
 
@@ -638,11 +649,13 @@ MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 
       return bytes_written;
     }
+//    cout << "Node: " << GetNodeName() << ", Node has no data to flush" << endl;
   return 0;
 }
 
 void
 MarutTorBktapApp::SendFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack) {
+//  cout << "Node: " << GetNodeName() << ", Sending feedback cell " << ", isAck:" << (flag & ACK) <<", isFwd:"<< (flag & FWD) << ", ack:" << ack << endl;
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   NS_ASSERT (ch);
@@ -691,7 +704,6 @@ MarutTorBktapApp::PushFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection d
       }
 
 			header.diff = oppqueue->circ_diff;
-			header.isNegative = oppqueue->circ_isNegative;
 
       cell->AddHeader (header);
       ch->m_flushQueue.push (cell);
