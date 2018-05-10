@@ -264,6 +264,7 @@ public:
     devRtt = Time (0);
     baseRtt = Time (Seconds (42));
     ResetCurrRtt ();
+    cntRtt = 0;
   }
 
   void
@@ -377,7 +378,7 @@ public:
 
   SeqQueue ()
   {
-    cwnd = 6;
+    cwnd = 2;
     diff = 0;
 //    isNegative = 0;
     circ_diff = 0;

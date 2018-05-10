@@ -15,9 +15,9 @@ int main (int argc, char *argv[]) {
     uint32_t run = 1;
     Time simTime = Time("60s");
     //string flavor = "vanilla";
-    //string flavor = "bktap";
+    string flavor = "bktap";
     //string flavor   = "e2e";
-    string flavor = "marut";
+    //string flavor = "marut";
 
     CommandLine cmd;
     cmd.AddValue("run", "run number", run);
@@ -67,8 +67,10 @@ int main (int argc, char *argv[]) {
     m_startTime->SetAttribute ("Max", DoubleValue (30.0));
     th.SetStartTimeStream (m_startTime);
 
-    th.ParseFile ("circuits-1c3r-20180507.dat",1,0.); // parse scenario from file
+    //th.ParseFile ("circuits-1c3r-20180507.dat",1,0.); // parse scenario from file
     //th.ParseFile ("circuits-10000c100r-20150804.dat",100,0.1);
+    //th.ParseFile ("circuits-2c4r-20150804.dat",2,0.);
+    th.ParseFile ("circuits-20c22r-20150804.dat",20,0.5);
 
     th.PrintCircuits();
     th.BuildTopology(); // finally build topology, setup relays and seed circuits

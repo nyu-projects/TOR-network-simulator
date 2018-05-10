@@ -6,6 +6,13 @@ using namespace std;
 
 namespace ns3 {
 
+  std::string CellDirectionArray[2] =
+  {
+          "INBOUND",
+                "OUTBOUND"
+  };
+
+
 NS_LOG_COMPONENT_DEFINE ("MarutTorBktapApp");
 NS_OBJECT_ENSURE_REGISTERED (MarutTorBktapApp);
 
@@ -350,7 +357,7 @@ MarutTorBktapApp::ReadFromRelay (Ptr<Socket> socket) {
 void
 MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, Ptr<Packet> cell)
 {
-  cout << "Node: " << GetNodeName() << " Received Relay Cell " << endl;
+//  cout << "Node: " << GetNodeName() << " Received Relay Cell " << endl;
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
   UdpCellHeader header;
   cell->PeekHeader (header);
@@ -366,7 +373,7 @@ MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection 
 void
 MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header)
 {
-  cout << "Node: " << GetNodeName() << " Received Ack " << endl;
+//  cout << "Node: " << GetNodeName() << " Received Ack " << endl;
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
   if (header.ack == queue->headSeq)
     {
@@ -399,8 +406,9 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
 
 //UPDATE cwnd for endhost (proxy node or server node)
 void
-MarutTorBktapApp::WindowUpdate (Ptr<SeqQueue> queue, Time baseRtt) {
-  cout << "Node: " << GetNodeName() << " Updating Window, cwnd=" << queue->cwnd << ", Circuit Diff:"  << queue->circ_diff << ", " <<  queue->circ_diff / 10000. << endl;
+MarutTorBktapApp::WindowUpdate (Ptr<SeqQueue> queue, Time baseRtt, uint16_t circ_id, CellDirection direction) {
+//   if (queue->virtRtt.cntRtt > 2) {
+//  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] <<", Updating Window, cwnd=" << queue->cwnd << ", Circuit Diff:"  << queue->circ_diff << ", " <<  queue->circ_diff / 10000. << endl;
   double c_diff = queue->circ_diff / 10000.;
 
   if (c_diff < VEGASALPHA) {
@@ -418,45 +426,45 @@ MarutTorBktapApp::WindowUpdate (Ptr<SeqQueue> queue, Time baseRtt) {
   double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds (); 
   queue->cwnd = min (queue->cwnd, (uint32_t) maxexp);
 
-  cout << "Node: " << GetNodeName() << " Updated Window, cwnd=" << queue->cwnd << endl;
+//  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << ", Updated Window, cwnd=" << queue->cwnd << endl;
+//   }
 }
 
 void
-MarutTorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, uint64_t packet_diff, Time baseRtt) {
+MarutTorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, uint64_t packet_diff, Time baseRtt, uint16_t circ_id, CellDirection direction) {
   //Do the Vegas-thing every RTT
-  cout << "Node: " << GetNodeName() << " Updating congestion, circ_diff=" << queue->circ_diff << endl;
-  if (queue->virtRtt.cntRtt > 2) {
+//  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << ", Updating congestion, circ_diff=" << queue->circ_diff << endl;
+//  if (queue->virtRtt.cntRtt > 2) {
       Time rtt = queue->virtRtt.currentRtt;
       double diff = queue->cwnd * (rtt.GetSeconds () - baseRtt.GetSeconds ()) / baseRtt.GetSeconds ();
 
-      cout << "Node: " << GetNodeName() << ", diff=" << diff << endl;
+//      cout << "Node: " << GetNodeName() << ", diff=" << diff << endl;
 			//DO NOT UPDATE QUEUE HERE. JUST CALCULATE THE DIFF FOR A CIRCUIT AND DIRECTION (QUEUE)
 
       queue->diff = diff * 10000;
-      cout << "Node: " << GetNodeName() << ", queue->diff=" << queue->diff << endl;
+//      cout << "Node: " << GetNodeName() << ", queue->diff=" << queue->diff << endl;
+//  }
 
 			double c_diff = packet_diff / 10000.;
-      cout << "Node: " << GetNodeName() << ", packet c_diff=" << c_diff << endl;
+//      cout << "Node: " << GetNodeName() << ", packet c_diff=" << c_diff << endl;
+  
+			c_diff = max (queue->diff / 10000., c_diff);
 
-			c_diff = max (diff, c_diff);
-
-      cout << "Node: " << GetNodeName() << ", actual c_diff=" << c_diff << endl;
+//      cout << "Node: " << GetNodeName() << ", actual c_diff=" << c_diff << endl;
 
   		queue->circ_diff = c_diff * 10000;	
 
       queue->virtRtt.ResetCurrRtt ();
 
-      cout << "Node: " << GetNodeName() << " Updated congestion, circ_diff=" << queue->circ_diff << endl;
-  }
-  else {
+//      cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << " Updated congestion, circ_diff=" << queue->circ_diff << endl;
+//  }
       // Vegas falls back to Reno CA, i.e. increase per RTT
       // However, This messes up with our backlog and makes the approach too aggressive.
-  }
 }
 
 void
 MarutTorBktapApp::ReceivedFwd (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header) {
-  cout << "Node: " << GetNodeName() << " Received Fwd Cell" << endl;
+//  cout << "Node: " << GetNodeName() << " Received Fwd Cell" << endl;
   //Received flow control feeback (FWD)
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
@@ -473,10 +481,10 @@ MarutTorBktapApp::ReceivedFwd (Ptr<MarutBktapCircuit> circ, CellDirection direct
 
   if (header.fwd > queue->begRttSeq) {
       queue->begRttSeq = queue->nextTxSeq;
-      CongestionAvoidance (queue, header.diff, ch->rttEstimator.baseRtt);
+      CongestionAvoidance (queue, header.diff, ch->rttEstimator.baseRtt, circ->GetId (), direction);
 			//Only for Edge Tor Nodes
 			if (!(oppch->SpeaksCells())) {	
-					WindowUpdate(queue, ch->rttEstimator.baseRtt);
+					WindowUpdate(queue, ch->rttEstimator.baseRtt, circ->GetId (), direction);
 			}
       //queue->ssthresh = min (queue->cwnd,queue->ssthresh);
       //queue->ssthresh = max (queue->ssthresh,queue->cwnd / 2);
@@ -524,7 +532,7 @@ MarutTorBktapApp::ReadFromEdge (Ptr<Socket> socket)
 void
 MarutTorBktapApp::PackageRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, Ptr<Packet> cell)
 {
-  cout << "Node: " << GetNodeName() << " Relay Cell Packaged " << endl;
+//  cout << "Node: " << GetNodeName() << " Relay Cell Packaged " << endl;
   UdpCellHeader header;
   header.circId = circ->GetId ();
   Ptr<SeqQueue> queue = circ->GetQueue (direction);
@@ -587,7 +595,7 @@ MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 //Only check Window if NOT a MIDDLE NODE. 
 //ToDo:Should we also add a check (!ch->SpeaksCells() && oppch->SpeaksCells())
   if (!(ch->SpeaksCells() && oppch->SpeaksCells()) && queue->Window () <= 0 && !retx) {
-      cout << "Node: " << GetNodeName() << ", Edge Node with window less than 0" << endl;
+//      cout << "Node: " << GetNodeName() << ", Edge Node with window less than 0" << endl;
       return 0;
   }
 
