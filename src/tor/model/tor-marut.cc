@@ -411,8 +411,6 @@ MarutTorBktapApp::WindowUpdate (Ptr<MarutSeqQueue> queue, Time baseRtt) {
 //   if (queue->virtRtt.cntRtt > 2) {
 //  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] <<", Updating Window, cwnd=" << queue->cwnd << ", Circuit Diff:"  << queue->circ_diff << ", " <<  queue->circ_diff / 10000. << endl;
   double c_diff = queue->circ_diff / 10000.;
->>>>>>> e5e47c18fec1262043bcc3a2bfcbc480bb0b34b4
-
   if (c_diff < VEGASALPHA) {
       ++queue->cwnd;
   }
