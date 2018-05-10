@@ -22,6 +22,164 @@ namespace ns3 {
 class MarutBktapCircuit;
 class MarutUdpChannel;
 
+class MarutSeqQueue : public SimpleRefCount<MarutSeqQueue>
+{
+public:
+  uint32_t cwnd;
+  uint64_t diff;
+  uint8_t  isNegative;
+
+  uint64_t circ_diff;
+  uint8_t  circ_isNegative;
+
+  uint32_t ssthresh;
+  uint32_t nextTxSeq;
+  uint32_t highestTxSeq;
+  uint32_t tailSeq;
+  uint32_t headSeq;
+  uint32_t virtHeadSeq;
+  uint32_t begRttSeq;
+  uint32_t dupackcnt;
+  map< uint32_t, Ptr<Packet> > cellMap;
+
+  bool wasRetransmit;
+
+  queue<uint32_t> ackq;
+  queue<uint32_t> fwdq;
+  EventId delFeedbackEvent;
+
+  SimpleRttEstimator virtRtt;
+  SimpleRttEstimator actRtt;
+  EventId retxEvent;
+
+  MarutSeqQueue ()
+  {
+    cwnd = 6;
+    diff = 0;
+    isNegative = 0;
+    circ_diff = 0;
+    circ_isNegative = 0;
+
+    nextTxSeq = 1;
+    highestTxSeq = 0;
+    tailSeq = 0;
+    headSeq = 0;
+    virtHeadSeq = 0;
+    begRttSeq = 1;
+    ssthresh = pow (2,10);
+    dupackcnt = 0;
+  }
+
+  // IMPORTANT: return value is now true if the cell is new, else false
+  // previous behavior was: true if tailSeq increases
+  bool
+  Add ( Ptr<Packet> cell, uint32_t seq ) {
+    if (tailSeq < seq && cellMap.find(seq) == cellMap.end()) {
+        cellMap[seq] = cell;
+        while (cellMap.find (tailSeq + 1) != cellMap.end ()) {
+            ++tailSeq;
+        }
+
+        if (headSeq == 0)
+          {
+            headSeq = virtHeadSeq = cellMap.begin ()->first;
+          }
+
+        return true;
+      }
+    return false;
+  }
+
+  Ptr<Packet>
+  GetCell (uint32_t seq)
+  {
+    Ptr<Packet> cell;
+if (cellMap.find (seq) != cellMap.end ())
+      {
+        cell = cellMap[seq];
+      }
+    wasRetransmit = true; //implicitely assume that it is a retransmit
+    return cell;
+  }
+
+  Ptr<Packet>
+  GetNextCell ()
+  {
+    Ptr<Packet> cell;
+    if (cellMap.find (nextTxSeq) != cellMap.end ())
+      {
+        cell = cellMap[nextTxSeq];
+        ++nextTxSeq;
+      }
+
+    if (highestTxSeq < nextTxSeq - 1)
+      {
+        highestTxSeq = nextTxSeq - 1;
+        wasRetransmit = false;
+      }
+    else
+    {
+      wasRetransmit = true;
+    }
+
+    return cell;
+  }
+
+  bool WasRetransmit()
+  {
+    return wasRetransmit;
+  }
+
+ void
+  DiscardUpTo (uint32_t seq)
+  {
+    while (cellMap.find (seq - 1) != cellMap.end ())
+      {
+        cellMap.erase (seq - 1);
+        ++headSeq;
+        --seq;
+      }
+
+    if (headSeq > nextTxSeq)
+      {
+        nextTxSeq = headSeq;
+      }
+  }
+
+  uint32_t
+  VirtSize ()
+  {
+    int t_diff = tailSeq - virtHeadSeq;
+    return t_diff < 0 ? 0 : t_diff;
+  }
+
+  uint32_t
+  Size ()
+  {
+    int t_diff = tailSeq - headSeq;
+    return t_diff < 0 ? 0 : t_diff;
+  }
+
+  uint32_t
+  Window ()
+  {
+    return cwnd - Inflight ();
+  }
+ 
+  uint32_t
+  Inflight ()
+  {
+    return nextTxSeq - virtHeadSeq - 1;
+  }
+
+  bool
+  PackageInflight ()
+  {
+    return headSeq != highestTxSeq;
+  }
+
+};
+
 
 class MarutUdpChannel : public SimpleRefCount<MarutUdpChannel>
 {
@@ -57,11 +215,11 @@ public:
   Ptr<MarutUdpChannel> inbound;
   Ptr<MarutUdpChannel> outbound;
 
-  Ptr<SeqQueue> inboundQueue;
-  Ptr<SeqQueue> outboundQueue;
+  Ptr<MarutSeqQueue> inboundQueue;
+  Ptr<MarutSeqQueue> outboundQueue;
 
   CellDirection GetDirection (Ptr<MarutUdpChannel>);
-  Ptr<SeqQueue> GetQueue (CellDirection);
+  Ptr<MarutSeqQueue> GetQueue (CellDirection);
   Ptr<MarutUdpChannel> GetChannel (CellDirection direction);
 };
 
@@ -98,8 +256,8 @@ public:
   void ReceivedRelayCell (Ptr<MarutBktapCircuit>, CellDirection, Ptr<Packet>);
   void ReceivedAck (Ptr<MarutBktapCircuit>, CellDirection, FdbkCellHeader);
   void ReceivedFwd (Ptr<MarutBktapCircuit>, CellDirection, FdbkCellHeader);
-  void CongestionAvoidance (Ptr<SeqQueue>, uint64_t, uint8_t, Time);
-  void WindowUpdate (Ptr<SeqQueue>, Time);
+  void CongestionAvoidance (Ptr<MarutSeqQueue>, uint64_t, uint8_t, Time);
+  void WindowUpdate (Ptr<MarutSeqQueue>, Time);
 	
 
   Ptr<MarutUdpChannel> LookupChannel (Ptr<Socket>);

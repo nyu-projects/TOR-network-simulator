@@ -338,7 +338,7 @@ public:
   }
 };
 
-
+*/
 
 
 class SeqQueue : public SimpleRefCount<SeqQueue>
@@ -491,7 +491,6 @@ public:
   }
 
 };
-*/
 
 
 class UdpChannel : public SimpleRefCount<UdpChannel>

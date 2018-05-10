@@ -13,10 +13,10 @@ void TtlbCallback(int, double, std::string);
 
 int main (int argc, char *argv[]) {
     uint32_t run = 1;
-    Time simTime = Time("60s");
+    Time simTime = Time("90s");
     //string flavor = "vanilla";
-    //string flavor = "bktap";
-    string flavor   = "e2e";
+    string flavor = "bktap";
+    //string flavor   = "n23";
     //string flavor = "marut";
 
     CommandLine cmd;
@@ -67,8 +67,8 @@ int main (int argc, char *argv[]) {
     m_startTime->SetAttribute ("Max", DoubleValue (30.0));
     th.SetStartTimeStream (m_startTime);
 
-    th.ParseFile ("circuits-1c3r-20180507.dat",1,0.); // parse scenario from file
-    //th.ParseFile ("circuits-10000c100r-20150804.dat",100,0.1);
+    //th.ParseFile ("circuits-1c3r-20180507.dat",1,0.); // parse scenario from file
+    th.ParseFile ("circuits-10000c100r-20150804.dat",100,0.5);
 
     th.PrintCircuits();
     th.BuildTopology(); // finally build topology, setup relays and seed circuits
@@ -104,15 +104,15 @@ void StatsCallback(TorDumbbellHelper* th, Time simTime) {
       Ptr<BaseCircuit> proxyCirc = proxyApp->baseCircuits[*id];
       Ptr<BaseCircuit> middleCirc = middleApp->baseCircuits[*id];
       Ptr<BaseCircuit> exitCirc = exitApp->baseCircuits[*id];
-      cout <<"INBOUND: " << endl;
-      cout <<"Exit Node: "<< exitCirc->GetBytesRead(INBOUND) << " " << exitCirc->GetBytesWritten(INBOUND) << endl;
-      cout <<"Middle Node: "<< middleCirc->GetBytesRead(INBOUND) << " " << middleCirc->GetBytesWritten(INBOUND) << endl;
-      cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(INBOUND) << " " << proxyCirc->GetBytesWritten(INBOUND) << endl;
+      //cout <<"INBOUND: " << endl;
+      //cout <<"Exit Node: "<< exitCirc->GetBytesRead(INBOUND) << " " << exitCirc->GetBytesWritten(INBOUND) << endl;
+      //cout <<"Middle Node: "<< middleCirc->GetBytesRead(INBOUND) << " " << middleCirc->GetBytesWritten(INBOUND) << endl;
+      //cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(INBOUND) << " " << proxyCirc->GetBytesWritten(INBOUND) << endl;
 
-      cout <<"OUTBOUND: " << endl;
-      cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(OUTBOUND) << " " << proxyCirc->GetBytesWritten(OUTBOUND) << endl;
-      cout <<"Middle Node: "<< middleCirc->GetBytesRead(OUTBOUND) << " " << middleCirc->GetBytesWritten(OUTBOUND) << endl;
-      cout <<"Exit Node: "<< exitCirc->GetBytesRead(OUTBOUND) << " " << exitCirc->GetBytesWritten(OUTBOUND) << endl;
+      //cout <<"OUTBOUND: " << endl;
+      //cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(OUTBOUND) << " " << proxyCirc->GetBytesWritten(OUTBOUND) << endl;
+      //cout <<"Middle Node: "<< middleCirc->GetBytesRead(OUTBOUND) << " " << middleCirc->GetBytesWritten(OUTBOUND) << endl;
+      //cout <<"Exit Node: "<< exitCirc->GetBytesRead(OUTBOUND) << " " << exitCirc->GetBytesWritten(OUTBOUND) << endl;
 
       //proxyCirc->ResetStats(); exitCirc->ResetStats();
     }

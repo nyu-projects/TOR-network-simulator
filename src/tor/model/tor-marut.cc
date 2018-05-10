@@ -89,8 +89,8 @@ MarutUdpChannel::ScheduleFlush (bool delay)
 
 MarutBktapCircuit::MarutBktapCircuit (uint16_t id) : BaseCircuit (id)
 {
-  inboundQueue = Create<SeqQueue> ();
-  outboundQueue = Create<SeqQueue> ();
+  inboundQueue = Create<MarutSeqQueue> ();
+  outboundQueue = Create<MarutSeqQueue> ();
 }
 
 CellDirection
@@ -119,7 +119,7 @@ MarutBktapCircuit::GetChannel (CellDirection direction)
     }
 }
 
-Ptr<SeqQueue>
+Ptr<MarutSeqQueue>
 MarutBktapCircuit::GetQueue (CellDirection direction)
 {
   if (direction == OUTBOUND)
@@ -357,7 +357,7 @@ MarutTorBktapApp::ReadFromRelay (Ptr<Socket> socket)
 void
 MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, Ptr<Packet> cell)
 {
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   UdpCellHeader header;
   cell->PeekHeader (header);
   bool newseq = queue->Add (cell, header.seq);
@@ -372,7 +372,7 @@ MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection 
 void
 MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header)
 {
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   if (header.ack == queue->headSeq)
     {
       // DupACK. Do fast retransmit.
@@ -404,7 +404,7 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
 
 //UPDATE cwnd for endhost (proxy node or server node)
 void
-MarutTorBktapApp::WindowUpdate (Ptr<SeqQueue> queue, Time baseRtt) {
+MarutTorBktapApp::WindowUpdate (Ptr<MarutSeqQueue> queue, Time baseRtt) {
 			double c_diff = (queue->circ_isNegative) ? -queue->circ_diff / 10000. : queue->circ_diff / 10000.;
 
       if (c_diff < VEGASALPHA) {
@@ -424,7 +424,7 @@ MarutTorBktapApp::WindowUpdate (Ptr<SeqQueue> queue, Time baseRtt) {
 }
 
 void
-MarutTorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, uint64_t packet_diff, uint8_t packet_isNegative, Time baseRtt) {
+MarutTorBktapApp::CongestionAvoidance (Ptr<MarutSeqQueue> queue, uint64_t packet_diff, uint8_t packet_isNegative, Time baseRtt) {
   //Do the Vegas-thing every RTT
   if (queue->virtRtt.cntRtt > 2) {
       Time rtt = queue->virtRtt.currentRtt;
@@ -462,7 +462,7 @@ MarutTorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, uint64_t packet_diff
 void
 MarutTorBktapApp::ReceivedFwd (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header) {
   //Received flow control feeback (FWD)
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
 
   CellDirection oppdir = circ->GetOppositeDirection (direction);
@@ -505,7 +505,7 @@ MarutTorBktapApp::ReadFromEdge (Ptr<Socket> socket)
   NS_ASSERT (circ);
   CellDirection direction = circ->GetDirection (ch);
   CellDirection oppdir = circ->GetOppositeDirection (direction);
-  Ptr<SeqQueue> queue = circ->GetQueue (oppdir);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (oppdir);
 
   uint32_t max_read = (queue->cwnd - queue->VirtSize () <= 0) ? 0 : queue->cwnd - queue->VirtSize ();
   max_read *= CELL_PAYLOAD_SIZE;
@@ -530,7 +530,7 @@ MarutTorBktapApp::PackageRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 {
   UdpCellHeader header;
   header.circId = circ->GetId ();
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   NS_ASSERT (queue);
   header.seq = queue->tailSeq + 1;
   cell->AddHeader (header);
@@ -580,7 +580,7 @@ MarutTorBktapApp::WriteCallback ()
 
 uint32_t
 MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, bool retx) {
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   CellDirection oppdir   = circ->GetOppositeDirection (direction);
   Ptr<MarutUdpChannel> ch  = circ->GetChannel (direction);
   Ptr<MarutUdpChannel> oppch = circ->GetChannel (oppdir);
@@ -644,7 +644,7 @@ MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 void
 MarutTorBktapApp::SendFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack) {
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   NS_ASSERT (ch);
   if (ch->SpeaksCells ()) {
       if (flag & ACK) {
@@ -666,10 +666,10 @@ MarutTorBktapApp::SendFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 void
 MarutTorBktapApp::PushFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection direction) {
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
 
   CellDirection oppdir   = circ->GetOppositeDirection (direction);
-  Ptr<SeqQueue> oppqueue = circ->GetQueue (oppdir);
+  Ptr<MarutSeqQueue> oppqueue = circ->GetQueue (oppdir);
 
   NS_ASSERT (ch);
 
@@ -702,7 +702,7 @@ MarutTorBktapApp::PushFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 void
 MarutTorBktapApp::ScheduleRto (Ptr<MarutBktapCircuit> circ, CellDirection direction, bool force)
 {
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   if (force)
     {
       queue->retxEvent.Cancel ();
@@ -720,7 +720,7 @@ MarutTorBktapApp::ScheduleRto (Ptr<MarutBktapCircuit> circ, CellDirection direct
 void
 MarutTorBktapApp::Rto (Ptr<MarutBktapCircuit> circ, CellDirection direction)
 {
-  Ptr<SeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   queue->nextTxSeq = queue->headSeq;
   FlushPendingCell (circ,direction);
 }

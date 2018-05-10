@@ -343,7 +343,7 @@ public:
 
 
 
-
+/*
 class SeqQueue : public SimpleRefCount<SeqQueue>
 {
 public:
@@ -502,6 +502,6 @@ public:
   }
 
 };
-
+*/
 } /* end namespace ns3 */
 #endif /* __BKTAP_BASE_H__ */
