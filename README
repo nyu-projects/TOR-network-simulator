@@ -1,3 +1,41 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Added by Ambuj Ojha and Neha Sharma
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Setup:
+git clone https://github.com/ambujojha/nstor.git
+sudo apt-get update
+sudo apt-get install ssh
+sudo apt-get install mercurial
+hg clone https://secure.wand.net.nz/mercurial/nsc       // install nsc in nstor
+sudo apt-get install build-essential
+sudo apt-get install flex
+sudo apt-get install bison
+
+
+Build NSC:
+cd nsc
+
+update num_Stacks 200 in below:
+globaliser/sim/num_stacks.h
+sim/num_stacks.h
+
+
+
+clean:
+python scons.py -c
+
+build:
+python scons.py
+
+Build nstor:
+./waf configure --with-nsc=nsc/
+./waf
+
+./waf --run scratch/<name>
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 Please note, that this ns-3 fork implements a module to simulate the
 Tor network (https://www.torproject.org). In addition, it implements
 an experimental transport protocol, namely BackTap: Backpressure-based
