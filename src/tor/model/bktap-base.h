@@ -8,6 +8,7 @@
 
 #define ACK 1
 #define FWD 2
+#define MRT 3
 #define FDBK 12
 #define NS3_SOCK_STREAM 0
 #define VEGASALPHA 3
@@ -166,12 +167,13 @@ public:
   uint8_t flags;
   uint32_t ack;
   uint32_t fwd;
+  uint32_t mrt;
   uint64_t diff;
 //  uint8_t  isNegative;
 
   FdbkCellHeader ()
   {
-    circId = flags = ack = fwd = 0;
+    circId = flags = ack = fwd = mrt = 0;
 //    diff = isNegative = 0;
     cellType = FDBK;
   }
@@ -196,15 +198,16 @@ public:
   Print (ostream &os) const
   {
     os << "id=" << circId;
-    os << " ack=" << ack << " fwd=" << fwd;
-    if ((flags & ACK) != 0)
-      {
+    os << " ack=" << ack << " fwd=" << fwd << " mrt=" << mrt;
+    if ((flags & ACK) != 0) {
         os << " ACK";
-      }
-    if ((flags & FWD) != 0)
-      {
+    }
+    if ((flags & FWD) != 0) {
         os << " FWD";
-      }
+    }
+    if ((flags & MRT) != 0) {
+        os << " MRT";
+    }
     os <<" diff= "<< diff;
 //    os <<" isNegative= "<<isNegative;
   }
@@ -225,6 +228,7 @@ public:
     i.WriteU8 (flags);
     i.WriteU32 (ack);
     i.WriteU32 (fwd);
+    i.WriteU32 (mrt);
     i.WriteU64 (diff);
 //    i.WriteU8 (isNegative);
   }
@@ -238,6 +242,7 @@ public:
     flags = i.ReadU8 ();
     ack = i.ReadU32 ();
     fwd = i.ReadU32 ();
+    mrt = i.ReadU32 ();
     diff = i.ReadU64 ();
 //    isNegative = i.ReadU8 ();
     return GetSerializedSize ();
@@ -257,8 +262,7 @@ public:
   uint32_t cntRtt;
   uint32_t rttMultiplier;
 
-  SimpleRttEstimator ()
-  {
+  SimpleRttEstimator () {
     rttMultiplier = 1;
     estimatedRtt = Time (0);
     devRtt = Time (0);
@@ -268,8 +272,7 @@ public:
   }
 
   void
-  SentSeq (uint32_t seq)
-  {
+  SentSeq (uint32_t seq){
     if (rttHistory.size () == 0 || rttHistory.rbegin ()->first + 1 == seq)
       {
         // next seq, log it.
@@ -283,8 +286,7 @@ public:
   }
 
   Time
-  EstimateRtt (uint32_t ack)
-  {
+  EstimateRtt (uint32_t ack) {
     Time rtt = Time (0);
     if (rttHistory.find (ack - 1) != rttHistory.end ())
       {
@@ -301,8 +303,7 @@ public:
   }
 
   void
-  AddSample (Time rtt)
-  {
+  AddSample (Time rtt) {
     if (rtt > 0)
       {
         double alpha = 0.125;
@@ -324,186 +325,20 @@ public:
   }
 
   void
-  ResetCurrRtt ()
-  {
+  ResetCurrRtt () {
     currentRtt = Time (Seconds (10000));
     cntRtt = 0;
   }
 
   Time
-  Rto ()
-  {
+  Rto () {
     Time rto = estimatedRtt + 4 * devRtt;
     rto = rto * rttMultiplier;
-    if (rto.GetMilliSeconds () < 1000)
-      {
+    if (rto.GetMilliSeconds () < 1000) {
         return Time (MilliSeconds (1000));
-      }
+    }
     return rto;
   }
 };
-
-
-
-/*
-class SeqQueue : public SimpleRefCount<SeqQueue>
-{
-public:
-  uint32_t cwnd;
-  uint64_t diff;
-//  uint8_t  isNegative;
-
-  uint64_t circ_diff;
-//  uint8_t  circ_isNegative;
-
-  uint32_t ssthresh;
-  uint32_t nextTxSeq;
-  uint32_t highestTxSeq;
-  uint32_t tailSeq;
-  uint32_t headSeq;
-  uint32_t virtHeadSeq;
-  uint32_t begRttSeq;
-  uint32_t dupackcnt;
-  map< uint32_t, Ptr<Packet> > cellMap;
-
-  bool wasRetransmit;
-
-  queue<uint32_t> ackq;
-  queue<uint32_t> fwdq;
-  EventId delFeedbackEvent;
-
-  SimpleRttEstimator virtRtt;
-  SimpleRttEstimator actRtt;
-  EventId retxEvent;
-
-  SeqQueue ()
-  {
-    cwnd = 2;
-    diff = 0;
-//    isNegative = 0;
-    circ_diff = 0;
-//    circ_isNegative = 0;
-
-    nextTxSeq = 1;
-    highestTxSeq = 0;
-    tailSeq = 0;
-    headSeq = 0;
-    virtHeadSeq = 0;
-    begRttSeq = 1;
-    ssthresh = pow (2,10);
-    dupackcnt = 0;
-  }
-
-  // IMPORTANT: return value is now true if the cell is new, else false
-  // previous behavior was: true if tailSeq increases
-  bool
-  Add ( Ptr<Packet> cell, uint32_t seq ) {
-    if (tailSeq < seq && cellMap.find(seq) == cellMap.end()) {
-        cellMap[seq] = cell;
-        while (cellMap.find (tailSeq + 1) != cellMap.end ()) {
-            ++tailSeq;
-        }
-
-        if (headSeq == 0)
-          {
-            headSeq = virtHeadSeq = cellMap.begin ()->first;
-          }
-
-        return true;
-      }
-    return false;
-  }
-
-  Ptr<Packet>
-  GetCell (uint32_t seq)
-  {
-    Ptr<Packet> cell;
-    if (cellMap.find (seq) != cellMap.end ())
-      {
-        cell = cellMap[seq];
-      }
-    wasRetransmit = true; //implicitely assume that it is a retransmit
-    return cell;
-  }
-
-  Ptr<Packet>
-  GetNextCell ()
-  {
-    Ptr<Packet> cell;
-    if (cellMap.find (nextTxSeq) != cellMap.end ())
-      {
-        cell = cellMap[nextTxSeq];
-        ++nextTxSeq;
-      }
-
-    if (highestTxSeq < nextTxSeq - 1)
-      {
-        highestTxSeq = nextTxSeq - 1;
-        wasRetransmit = false;
-      }
-    else
-    {
-      wasRetransmit = true;
-    }
-
-    return cell;
-  }
-
-  bool WasRetransmit()
-  {
-    return wasRetransmit;
-  }
-
-
-  void
-  DiscardUpTo (uint32_t seq)
-  {
-    while (cellMap.find (seq - 1) != cellMap.end ())
-      {
-        cellMap.erase (seq - 1);
-        ++headSeq;
-        --seq;
-      }
-
-    if (headSeq > nextTxSeq)
-      {
-        nextTxSeq = headSeq;
-      }
-  }
-
-  uint32_t
-  VirtSize ()
-  {
-    int t_diff = tailSeq - virtHeadSeq;
-    return t_diff < 0 ? 0 : t_diff;
-  }
-
-  uint32_t
-  Size ()
-  {
-    int t_diff = tailSeq - headSeq;
-    return t_diff < 0 ? 0 : t_diff;
-  }
-
-  uint32_t
-  Window ()
-  {
-    return cwnd - Inflight ();
-  }
-
-  uint32_t
-  Inflight ()
-  {
-    return nextTxSeq - virtHeadSeq - 1;
-  }
-
-  bool
-  PackageInflight ()
-  {
-    return headSeq != highestTxSeq;
-  }
-
-};
-*/
 } /* end namespace ns3 */
 #endif /* __BKTAP_BASE_H__ */
