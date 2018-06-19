@@ -3,13 +3,11 @@
 #include <cmath>
 
 using namespace std;
-
 namespace ns3 {
-
   std::string CellDirectionArray[2] =
   {
           "INBOUND",
-                "OUTBOUND"
+          "OUTBOUND"
   };
 
 
@@ -315,7 +313,7 @@ MarutTorBktapApp::ReadCallback (Ptr<Socket> socket)
 uint32_t
 MarutTorBktapApp::ReadFromRelay (Ptr<Socket> socket) {
   uint32_t read_bytes = 0;
-  while (socket->GetRxAvailable () > 0) {
+  while (socket->GetRxAvailable() > 0) {
       Ptr<Packet> data;
       Address from;
       if (data = socket->RecvFrom (from)) {
@@ -341,67 +339,73 @@ MarutTorBktapApp::ReadFromRelay (Ptr<Socket> socket) {
                       ReceivedFwd (circ,direction,h);
                   }
               }
-              else
-                {
+              else {
                   Ptr<Packet> cell = data->CreateFragment (0,CELL_PAYLOAD_SIZE + UDP_CELL_HEADER_SIZE);
                   data->RemoveAtStart (CELL_PAYLOAD_SIZE + UDP_CELL_HEADER_SIZE);
                   circ->IncrementStats (oppdir,cell->GetSize (),0);
                   ReceivedRelayCell (circ,oppdir,cell);
-                }
-            }
-        }
-    }
+              }
+          }
+      }
+  }
   return read_bytes;
 }
 
 void
-MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, Ptr<Packet> cell)
-{
- Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
- //cout << "Node: " << GetNodeName() << " Received Relay Cell " << endl;
- UdpCellHeader header;
+MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, Ptr<Packet> cell) {
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
+
+  //cout << "Node: " << GetNodeName() << " Received Relay Cell " << endl;
+  UdpCellHeader header;
   cell->PeekHeader (header);
   bool newseq = queue->Add (cell, header.seq);
   if (newseq) {
     m_readbucket.Decrement(cell->GetSize());
   }
   CellDirection oppdir = circ->GetOppositeDirection (direction);
-  SendFeedbackCell (circ, oppdir, ACK, queue->tailSeq + 1);
+  //Only send feedback cell from endnode
+
+  if (!(ch->SpeaksCells())) {
+    SendFeedbackCell (circ, oppdir, ACK, queue->tailSeq + 1);
+  }
 }
 
-
 void
-MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header)
-{
- Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
-//  cout << "Node: " << GetNodeName() << " Received Ack " << endl;
- if (header.ack == queue->headSeq)
-    {
-      // DupACK. Do fast retransmit.
-      ++queue->dupackcnt;
-      if (m_writebucket.GetSize () >= CELL_PAYLOAD_SIZE && queue->dupackcnt > 2)
-        {
-          FlushPendingCell (circ,direction,true);
-          queue->dupackcnt = 0;
+MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header) {
+  Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
+  Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
+
+  CellDirection oppdir   = circ->GetOppositeDirection(direction);
+  Ptr<MarutSeqQueue> oppch = circ->GetChannel(oppdir);
+
+  if (ch->SpeaksCells() && oppch->SpeaksCells()) {
+		SendFeedbackCell (circ, direction, ACK, header.ack);
+  } else {
+    //cout << "Node: " << GetNodeName() << " Received Ack " << endl;
+    if (header.ack == queue->headSeq) {
+        // DupACK. Do fast retransmit.
+        ++queue->dupackcnt;
+        if (m_writebucket.GetSize () >= CELL_PAYLOAD_SIZE && queue->dupackcnt > 2) {
+            FlushPendingCell (circ,direction,true);
+            queue->dupackcnt = 0;
         }
     }
-  else if (header.ack > queue->headSeq)
-    {
-      //NewAck
-      queue->dupackcnt = 0;
-      queue->DiscardUpTo (header.ack);
-      Time rtt = queue->actRtt.EstimateRtt (header.ack);
-      ScheduleRto (circ,direction,true);
-      if (!queue->PackageInflight ())
-        {
-          Ptr<MarutUdpChannel> ch = circ->GetChannel(direction);
-          ch->ScheduleFlush(false);
+    else if (header.ack > queue->headSeq) {
+        //NewAck
+        queue->dupackcnt = 0;
+        queue->DiscardUpTo (header.ack);
+        Time rtt = queue->actRtt.EstimateRtt (header.ack);
+        ScheduleRto (circ,direction,true);
+        if (!queue->PackageInflight ()) {
+            Ptr<MarutUdpChannel> ch = circ->GetChannel(direction);
+            ch->ScheduleFlush(false);
         }
     }
-  else
-    {
-      cerr << GetNodeName () << " Ignore Ack" << endl;
+    else {
+        cerr << GetNodeName () << " Ignore Ack" << endl;
     }
+  }
 }
 
 //UPDATE cwnd for endhost (proxy node or server node)
