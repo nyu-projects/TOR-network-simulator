@@ -356,7 +356,7 @@ MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection 
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
 
-  //cout << "Node: " << GetNodeName() << " Received Relay Cell " << endl;
+  cout << "Node: " << GetNodeName() << " Received Relay Cell " << endl;
   UdpCellHeader header;
   cell->PeekHeader (header);
   bool newseq = queue->Add (cell, header.seq);
@@ -382,7 +382,7 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
   if (ch->SpeaksCells() && oppch->SpeaksCells()) {
 		SendFeedbackCell (circ, direction, ACK, header.ack);
   } else {
-    //cout << "Node: " << GetNodeName() << " Received Ack " << endl;
+    cout << "Node: " << GetNodeName() << " Received Ack " << endl;
     if (header.ack == queue->headSeq) {
         // DupACK. Do fast retransmit.
         ++queue->dupackcnt;
@@ -467,7 +467,7 @@ MarutTorBktapApp::CongestionAvoidance (Ptr<MarutSeqQueue> queue, uint64_t packet
 
 void
 MarutTorBktapApp::ReceivedFwd (Ptr<MarutBktapCircuit> circ, CellDirection direction, FdbkCellHeader header) {
-//  cout << "Node: " << GetNodeName() << " Received Fwd Cell" << endl;
+  cout << "Node: " << GetNodeName() << " Received Fwd Cell" << endl;
   //Received flow control feeback (FWD)
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
@@ -535,7 +535,7 @@ MarutTorBktapApp::ReadFromEdge (Ptr<Socket> socket)
 void
 MarutTorBktapApp::PackageRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, Ptr<Packet> cell)
 {
-//  cout << "Node: " << GetNodeName() << " Relay Cell Packaged " << endl;
+  cout << "Node: " << GetNodeName() << " Relay Cell Packaged " << endl;
   UdpCellHeader header;
   header.circId = circ->GetId ();
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
@@ -589,7 +589,7 @@ MarutTorBktapApp::WriteCallback ()
 uint32_t
 MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, bool retx) {
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
-//  cout << "Node: " << GetNodeName() << ", Flush Pending Cell" << endl;
+  cout << "Node: " << GetNodeName() << ", Flush Pending Cell" << endl;
 
   CellDirection oppdir   = circ->GetOppositeDirection (direction);
   Ptr<MarutUdpChannel> ch  = circ->GetChannel (direction);
@@ -599,7 +599,7 @@ MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 //Only check Window if NOT a MIDDLE NODE. 
 //ToDo:Should we also add a check (!ch->SpeaksCells() && oppch->SpeaksCells())
   if (!(ch->SpeaksCells() && oppch->SpeaksCells()) && queue->Window () <= 0 && !retx) {
-//      cout << "Node: " << GetNodeName() << ", Edge Node with window less than 0" << endl;
+      cout << "Node: " << GetNodeName() << ", Edge Node with window less than 0" << endl;
       return 0;
   }
 
@@ -650,13 +650,13 @@ MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 
       return bytes_written;
     }
-//    cout << "Node: " << GetNodeName() << ", Node has no data to flush" << endl;
+    cout << "Node: " << GetNodeName() << ", Node has no data to flush" << endl;
   return 0;
 }
 
 void
 MarutTorBktapApp::SendFeedbackCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack) {
-//  cout << "Node: " << GetNodeName() << ", Sending feedback cell " << ", isAck:" << (flag & ACK) <<", isFwd:"<< (flag & FWD) << ", ack:" << ack << endl;
+  cout << "Node: " << GetNodeName() << ", Sending feedback cell " << ", isAck:" << (flag & ACK) <<", isFwd:"<< (flag & FWD) << ", ack:" << ack << endl;
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
   NS_ASSERT (ch);
