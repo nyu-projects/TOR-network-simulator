@@ -9,7 +9,7 @@
 def build(bld):
     module = bld.create_ns3_module('tor', ['internet', 'applications'])
     module.source = [
-        'model/tor-e2er.cc',
+        #'model/tor-e2er.cc',
         'model/tor-base.cc',
         'model/tor.cc',
         'model/tor-fair.cc',
@@ -17,7 +17,7 @@ def build(bld):
         'model/tor-n23.cc',
         'model/tor-bktap.cc',
         #'model/tor-e2e.cc',
-        #'model/tor-marut.cc',
+        'model/tor-marut.cc',
         #'model/tor-marut-v2.cc',
         'model/cell-header.cc',
         'model/pseudo-socket.cc',
@@ -34,7 +34,7 @@ def build(bld):
     headers = bld(features=['ns3header'])
     headers.module = 'tor'
     headers.source = [
-        'model/tor-e2er.h',
+        #'model/tor-e2er.h',
         'model/tor-base.h',
         'model/bktap-base.h',
         'model/tor.h',
@@ -44,7 +44,7 @@ def build(bld):
         'model/tor-bktap.h',
         #'model/tor-e2e.h',
         #'model/tor-marut.h',
-        #'model/tor-marut-v2.h',
+        'model/tor-marut-v2.h',
         'model/cell-header.h',
         'model/pseudo-socket.h',
         'model/tokenbucket.h',

@@ -366,9 +366,9 @@ MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection 
   CellDirection oppdir = circ->GetOppositeDirection (direction);
   //Only send feedback cell from endnode
 
-  if (!(ch->SpeaksCells())) {
+//  if (!(ch->SpeaksCells())) {
     SendFeedbackCell (circ, oppdir, ACK, queue->tailSeq + 1);
-  }
+//  }
 }
 
 void
@@ -377,12 +377,13 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
 
   CellDirection oppdir   = circ->GetOppositeDirection(direction);
-  Ptr<MarutSeqQueue> oppch = circ->GetChannel(oppdir);
+  Ptr<MarutUdpChannel> oppch = circ->GetChannel(oppdir);
 
-  if (ch->SpeaksCells() && oppch->SpeaksCells()) {
-		SendFeedbackCell (circ, direction, ACK, header.ack);
-  } else {
-    cout << "Node: " << GetNodeName() << " Received Ack " << endl;
+//  if (ch->SpeaksCells() && oppch->SpeaksCells()) {
+//    cout << "Node: " << GetNodeName() <<" Received Ack at relay node with header: "<< header.ack <<endl;
+//		SendFeedbackCell (circ, direction, ACK, header.ack);
+//  } else {
+    cout << "Node: " << GetNodeName() << " Received Ack at end node " << header.ack << endl;
     if (header.ack == queue->headSeq) {
         // DupACK. Do fast retransmit.
         ++queue->dupackcnt;
@@ -405,7 +406,7 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
     else {
         cerr << GetNodeName () << " Ignore Ack" << endl;
     }
-  }
+//  }
 }
 
 //UPDATE cwnd for endhost (proxy node or server node)

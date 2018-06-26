@@ -104,15 +104,15 @@ void StatsCallback(TorDumbbellHelper* th, Time simTime) {
       Ptr<BaseCircuit> proxyCirc = proxyApp->baseCircuits[*id];
       Ptr<BaseCircuit> middleCirc = middleApp->baseCircuits[*id];
       Ptr<BaseCircuit> exitCirc = exitApp->baseCircuits[*id];
-      //cout <<"INBOUND: " << endl;
-      //cout <<"Exit Node: "<< exitCirc->GetBytesRead(INBOUND) << " " << exitCirc->GetBytesWritten(INBOUND) << endl;
-      //cout <<"Middle Node: "<< middleCirc->GetBytesRead(INBOUND) << " " << middleCirc->GetBytesWritten(INBOUND) << endl;
-      //cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(INBOUND) << " " << proxyCirc->GetBytesWritten(INBOUND) << endl;
+      cout <<"INBOUND: " << endl;
+      cout <<"Exit Node: "<< exitCirc->GetBytesRead(INBOUND) << " " << exitCirc->GetBytesWritten(INBOUND) << endl;
+      cout <<"Middle Node: "<< middleCirc->GetBytesRead(INBOUND) << " " << middleCirc->GetBytesWritten(INBOUND) << endl;
+      cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(INBOUND) << " " << proxyCirc->GetBytesWritten(INBOUND) << endl;
 
-      //cout <<"OUTBOUND: " << endl;
-      //cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(OUTBOUND) << " " << proxyCirc->GetBytesWritten(OUTBOUND) << endl;
-      //cout <<"Middle Node: "<< middleCirc->GetBytesRead(OUTBOUND) << " " << middleCirc->GetBytesWritten(OUTBOUND) << endl;
-      //cout <<"Exit Node: "<< exitCirc->GetBytesRead(OUTBOUND) << " " << exitCirc->GetBytesWritten(OUTBOUND) << endl;
+      cout <<"OUTBOUND: " << endl;
+      cout <<"Proxy Node: "<< proxyCirc->GetBytesRead(OUTBOUND) << " " << proxyCirc->GetBytesWritten(OUTBOUND) << endl;
+      cout <<"Middle Node: "<< middleCirc->GetBytesRead(OUTBOUND) << " " << middleCirc->GetBytesWritten(OUTBOUND) << endl;
+      cout <<"Exit Node: "<< exitCirc->GetBytesRead(OUTBOUND) << " " << exitCirc->GetBytesWritten(OUTBOUND) << endl;
       //proxyCirc->ResetStats(); exitCirc->ResetStats();
     }
     cout << endl;
