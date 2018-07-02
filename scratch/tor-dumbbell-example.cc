@@ -16,7 +16,8 @@ int main (int argc, char *argv[]) {
     Time simTime = Time("90s");
     //string flavor = "vanilla";
     //string flavor = "bktap";
-    string flavor = "marut";
+    //string flavor = "marut";
+    string flavor = "bbr";	
 
     CommandLine cmd;
     cmd.AddValue("run", "run number", run);
@@ -57,6 +58,8 @@ int main (int argc, char *argv[]) {
         th.SetTorAppType("ns3::TorN23App");
     else if (flavor == "fair")
         th.SetTorAppType("ns3::TorFairApp");
+    else if (flavor ==  "bbr")
+	th.SetTorAppType("ns3::BBRTorBktapApp");
 
     th.DisableProxies(true); // make circuits shorter (entry = proxy), thus the simulation faster
     th.EnableNscStack(true,"cubic"); // enable linux protocol stack and set tcp flavor
