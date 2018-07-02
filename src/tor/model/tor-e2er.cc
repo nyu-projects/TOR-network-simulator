@@ -366,9 +366,10 @@ MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection 
   CellDirection oppdir = circ->GetOppositeDirection (direction);
   //Only send feedback cell from endnode
 
-//  if (!(ch->SpeaksCells())) {
+  if (!(ch->SpeaksCells())) {
+    cout << "Node: " << GetNodeName() << " Sending ACK Cell with header: " << queue->tailSeq + 1 <<endl;
     SendFeedbackCell (circ, oppdir, ACK, queue->tailSeq + 1);
-//  }
+  }
 }
 
 void
@@ -379,13 +380,14 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
   CellDirection oppdir   = circ->GetOppositeDirection(direction);
   Ptr<MarutUdpChannel> oppch = circ->GetChannel(oppdir);
 
-//  if (ch->SpeaksCells() && oppch->SpeaksCells()) {
-//    cout << "Node: " << GetNodeName() <<" Received Ack at relay node with header: "<< header.ack <<endl;
-//		SendFeedbackCell (circ, direction, ACK, header.ack);
-//  } else {
+  if (ch->SpeaksCells() && oppch->SpeaksCells()) {
+    cout << "Node: " << GetNodeName() <<" Received Ack at relay node with header: "<< header.ack <<endl;
+		SendFeedbackCell (circ, direction, ACK, header.ack);
+  } else {
     cout << "Node: " << GetNodeName() << " Received Ack at end node " << header.ack << endl;
     if (header.ack == queue->headSeq) {
         // DupACK. Do fast retransmit.
+        cout << "Node: " << GetNodeName() << " Duplicate Ack " << endl;
         ++queue->dupackcnt;
         if (m_writebucket.GetSize () >= CELL_PAYLOAD_SIZE && queue->dupackcnt > 2) {
             FlushPendingCell (circ,direction,true);
@@ -394,6 +396,7 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
     }
     else if (header.ack > queue->headSeq) {
         //NewAck
+        cout << "Node: " << GetNodeName() << " Valid Ack " << endl;
         queue->dupackcnt = 0;
         queue->DiscardUpTo (header.ack);
         Time rtt = queue->actRtt.EstimateRtt (header.ack);
@@ -406,7 +409,7 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
     else {
         cerr << GetNodeName () << " Ignore Ack" << endl;
     }
-//  }
+  }
 }
 
 //UPDATE cwnd for endhost (proxy node or server node)
@@ -590,7 +593,7 @@ MarutTorBktapApp::WriteCallback ()
 uint32_t
 MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection direction, bool retx) {
   Ptr<MarutSeqQueue> queue = circ->GetQueue (direction);
-  cout << "Node: " << GetNodeName() << ", Flush Pending Cell" << endl;
+//  cout << "Node: " << GetNodeName() << ", Flush Pending Cell" << endl;
 
   CellDirection oppdir   = circ->GetOppositeDirection (direction);
   Ptr<MarutUdpChannel> ch  = circ->GetChannel (direction);
@@ -651,7 +654,7 @@ MarutTorBktapApp::FlushPendingCell (Ptr<MarutBktapCircuit> circ, CellDirection d
 
       return bytes_written;
     }
-    cout << "Node: " << GetNodeName() << ", Node has no data to flush" << endl;
+    //cout << "Node: " << GetNodeName() << ", Node has no data to flush" << endl;
   return 0;
 }
 

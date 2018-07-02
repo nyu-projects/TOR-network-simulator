@@ -6,15 +6,15 @@
 
 #include "ns3/point-to-point-net-device.h"
 
+
 #define ACK 1
 #define FWD 2
-#define MRT 3
+//#define MRT 3
 #define FDBK 12
 #define NS3_SOCK_STREAM 0
 #define VEGASALPHA 3
 #define VEGASBETA 6
 #define UDP_CELL_HEADER_SIZE (4 + 4 + 2 + 6 + 2 + 1)
-
 
 namespace ns3 {
 
@@ -167,13 +167,13 @@ public:
   uint8_t flags;
   uint32_t ack;
   uint32_t fwd;
-  uint32_t mrt;
+//  uint32_t mrt;
   uint64_t diff;
 //  uint8_t  isNegative;
 
   FdbkCellHeader ()
   {
-    circId = flags = ack = fwd = mrt = 0;
+    circId = flags = ack = fwd = 0;//mrt = 0;
 //    diff = isNegative = 0;
     cellType = FDBK;
   }
@@ -198,16 +198,16 @@ public:
   Print (ostream &os) const
   {
     os << "id=" << circId;
-    os << " ack=" << ack << " fwd=" << fwd << " mrt=" << mrt;
+    os << " ack=" << ack << " fwd=" << fwd;// << " mrt=" << mrt;
     if ((flags & ACK) != 0) {
         os << " ACK";
     }
     if ((flags & FWD) != 0) {
         os << " FWD";
     }
-    if ((flags & MRT) != 0) {
-        os << " MRT";
-    }
+//    if ((flags & MRT) != 0) {
+//        os << " MRT";
+//    }
     os <<" diff= "<< diff;
 //    os <<" isNegative= "<<isNegative;
   }
@@ -228,7 +228,7 @@ public:
     i.WriteU8 (flags);
     i.WriteU32 (ack);
     i.WriteU32 (fwd);
-    i.WriteU32 (mrt);
+//    i.WriteU32 (mrt);
     i.WriteU64 (diff);
 //    i.WriteU8 (isNegative);
   }
@@ -242,7 +242,7 @@ public:
     flags = i.ReadU8 ();
     ack = i.ReadU32 ();
     fwd = i.ReadU32 ();
-    mrt = i.ReadU32 ();
+//    mrt = i.ReadU32 ();
     diff = i.ReadU64 ();
 //    isNegative = i.ReadU8 ();
     return GetSerializedSize ();
@@ -340,5 +340,8 @@ public:
     return rto;
   }
 };
-} /* end namespace ns3 */
+} // end namespace ns3
+
+
+
 #endif /* __BKTAP_BASE_H__ */
