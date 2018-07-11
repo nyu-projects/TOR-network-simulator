@@ -377,7 +377,7 @@ MarutTorBktapApp::ReceivedAck (Ptr<MarutBktapCircuit> circ, CellDirection direct
   Ptr<MarutUdpChannel> ch = circ->GetChannel (direction);
 
   CellDirection oppdir   = circ->GetOppositeDirection(direction);
-  Ptr<MarutSeqQueue> oppch = circ->GetChannel(oppdir);
+  Ptr<MarutUdpChannel> oppch = circ->GetChannel(oppdir);
 
   if (ch->SpeaksCells() && oppch->SpeaksCells()) {
 		SendFeedbackCell (circ, direction, ACK, header.ack);
