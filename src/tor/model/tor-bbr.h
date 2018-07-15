@@ -17,6 +17,11 @@
 #define UDP_CELL_HEADER_SIZE (4 + 4 + 2 + 6 + 2 + 1)
 */
 
+#define STARTUP_STATE 1
+#define DRAIN_STATE 2
+#define PROBE_BW_STATE 3
+#define PROBE_RTT_STATE 4
+
 namespace ns3 {
 
 class BBRBktapCircuit;
@@ -26,12 +31,13 @@ class BBRSeqQueue : public SimpleRefCount<BBRSeqQueue>
 {
 public:
   uint32_t cwnd;
-  uint64_t diff;
+  //uint64_t diff;
   uint8_t  isNegative;
 
-  uint64_t circ_diff;
+  //uint64_t circ_diff;
   uint8_t  circ_isNegative;
 
+  uint8_t bbr_state;  
   uint32_t ssthresh;
   uint32_t nextTxSeq;
   uint32_t highestTxSeq;
@@ -50,17 +56,17 @@ public:
 
   SimpleRttEstimator virtRtt;
   SimpleRttEstimator actRtt;
-  SimpleDelRateEstimator delRate;
   EventId retxEvent;
 
   BBRSeqQueue ()
   {
     cwnd = 6;
-    diff = 0;
+    //diff = 0;
     isNegative = 0;
-    circ_diff = 0;
+    //circ_diff = 0;
     circ_isNegative = 0;
-
+    bbr_state = 1;
+    
     nextTxSeq = 1;
     highestTxSeq = 0;
     tailSeq = 0;
@@ -173,6 +179,12 @@ if (cellMap.find (seq) != cellMap.end ())
     return nextTxSeq - virtHeadSeq - 1;
   }
 
+  uint32_t
+  Inflight2 ()
+  {
+    return nextTxSeq - headSeq - 1;
+  }
+
   bool
   PackageInflight ()
   {
@@ -204,7 +216,6 @@ public:
   uint8_t m_conntype;
   list<Ptr<BBRBktapCircuit> > circuits;
   SimpleRttEstimator rttEstimator;
-  SimpleDelRateEstimator delRateEstimator;
 };
 
 
@@ -258,8 +269,8 @@ public:
   void ReceivedRelayCell (Ptr<BBRBktapCircuit>, CellDirection, Ptr<Packet>);
   void ReceivedAck (Ptr<BBRBktapCircuit>, CellDirection, FdbkCellHeader);
   void ReceivedFwd (Ptr<BBRBktapCircuit>, CellDirection, FdbkCellHeader);
-  void CongestionAvoidance (Ptr<BBRSeqQueue>, uint64_t, Time,uint16_t, CellDirection);
-  void WindowUpdate (Ptr<BBRSeqQueue>, Time, uint16_t, CellDirection);
+  void CongestionAvoidance (Ptr<BBRSeqQueue>);
+  void WindowUpdate (Ptr<BBRSeqQueue>, Time, Time, double);
 
 
   Ptr<BBRUdpChannel> LookupChannel (Ptr<Socket>);

@@ -5,13 +5,6 @@
 using namespace std;
 
 namespace ns3 {
-//#ifndef CellDirectionArray
-//  std::string CellDirectionArray[2] =
-//  {
-//          "INBOUND",
-//          "OUTBOUND"
-//  };
-//#endif
 
 NS_LOG_COMPONENT_DEFINE ("BBRTorBktapApp");
 NS_OBJECT_ENSURE_REGISTERED (BBRTorBktapApp);
@@ -338,7 +331,7 @@ BBRTorBktapApp::ReadFromRelay (Ptr<Socket> socket) {
                       ReceivedAck (circ,direction,h);
                   }
                   if (h.flags & FWD) {
-                      ReceivedFwd (circ,direction,h);
+                      //ReceivedFwd (circ,direction,h);
                   }
               }
               else {
@@ -399,10 +392,12 @@ BBRTorBktapApp::ReceivedAck (Ptr<BBRBktapCircuit> circ, CellDirection direction,
         queue->DiscardUpTo (header.ack);
         Time rtt = queue->actRtt.EstimateRtt (header.ack);
         ScheduleRto (circ,direction,true);
+	queue->actRtt.EstimateDelRate (header.ack,rtt);
         if (!queue->PackageInflight ()) {
             Ptr<BBRUdpChannel> ch = circ->GetChannel(direction);
             ch->ScheduleFlush(false);
         }
+	CongestionAvoidance(queue);    
     }
     else {
         cerr << GetNodeName () << " Ignore Ack" << endl;
@@ -412,59 +407,22 @@ BBRTorBktapApp::ReceivedAck (Ptr<BBRBktapCircuit> circ, CellDirection direction,
 
 //UPDATE cwnd for endhost (proxy node or server node)
 void
-BBRTorBktapApp::WindowUpdate (Ptr<BBRSeqQueue> queue, Time baseRtt, uint16_t circ_id, CellDirection direction) {
-//   if (queue->virtRtt.cntRtt > 2) {
-//  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] <<", Updating Window, cwnd=" << queue->cwnd << ", Circuit Diff:"  << queue->circ_diff << ", " <<  queue->circ_diff / 10000. << endl;
-  double c_diff = queue->circ_diff / 10000.;
-  if (c_diff < VEGASALPHA) {
-      ++queue->cwnd;
-  }
-
-  if (c_diff > VEGASBETA) {
-      --queue->cwnd;
-  }
-
+BBRTorBktapApp::WindowUpdate (Ptr<BBRSeqQueue> queue, Time baseRtt, Time currRtt, double maxDelRate) {
+  cout << "Node: " << GetNodeName() <<"Inside  window upddate";
+  if (queue->Inflight2() > currRtt*maxDelRate)
+	--queue->cwnd;
+  else
+	++queue->cwnd;
   if (queue->cwnd < 1) {
       queue->cwnd = 1;
   }
-
   double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds (); 
   queue->cwnd = min (queue->cwnd, (uint32_t) maxexp);
-
-//  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << ", Updated Window, cwnd=" << queue->cwnd << endl;
-//   }
 }
 
 void
-BBRTorBktapApp::CongestionAvoidance (Ptr<BBRSeqQueue> queue, uint64_t packet_diff, Time baseRtt, uint16_t circ_id, CellDirection direction) {
- //Do the Vegas-thing every RTT
-//  cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << ", Updating congestion, circ_diff=" << queue->circ_diff << endl;
-//  if (queue->virtRtt.cntRtt > 2) {
-      Time rtt = queue->virtRtt.currentRtt;
-      double diff = queue->cwnd * (rtt.GetSeconds () - baseRtt.GetSeconds ()) / baseRtt.GetSeconds ();
-
-//      cout << "Node: " << GetNodeName() << ", diff=" << diff << endl;
-			//DO NOT UPDATE QUEUE HERE. JUST CALCULATE THE DIFF FOR A CIRCUIT AND DIRECTION (QUEUE)
-
-      queue->diff = diff * 10000;
-//      cout << "Node: " << GetNodeName() << ", queue->diff=" << queue->diff << endl;
-//  }
-
-			double c_diff = packet_diff / 10000.;
-//      cout << "Node: " << GetNodeName() << ", packet c_diff=" << c_diff << endl;
-  
-			c_diff = max (queue->diff / 10000., c_diff);
-
-//      cout << "Node: " << GetNodeName() << ", actual c_diff=" << c_diff << endl;
-
-  		queue->circ_diff = c_diff * 10000;	
-
-      queue->virtRtt.ResetCurrRtt ();
-
-//      cout << "Node: " << GetNodeName() <<", CircuitId: "<< circ_id <<", Direction: "<<CellDirectionArray[static_cast<int>(direction)] << " Updated congestion, circ_diff=" << queue->circ_diff << endl;
-//  }
-      // Vegas falls back to Reno CA, i.e. increase per RTT
-      // However, This messes up with our backlog and makes the approach too aggressive.
+BBRTorBktapApp::CongestionAvoidance (Ptr<BBRSeqQueue> queue){	
+	WindowUpdate(queue, queue->actRtt.baseRtt, queue->actRtt.currentRtt, queue->actRtt.maxDelRate);
 }
 
 void
@@ -486,10 +444,10 @@ BBRTorBktapApp::ReceivedFwd (Ptr<BBRBktapCircuit> circ, CellDirection direction,
 
   if (header.fwd > queue->begRttSeq) {
       queue->begRttSeq = queue->nextTxSeq;
-      CongestionAvoidance (queue, header.diff, ch->rttEstimator.baseRtt, circ->GetId (), direction);
+      //CongestionAvoidance (queue, header.diff, ch->rttEstimator.baseRtt, circ->GetId (), direction);
 			//Only for Edge Tor Nodes
 			if (!(oppch->SpeaksCells())) {	
-					WindowUpdate(queue, ch->rttEstimator.baseRtt, circ->GetId (), direction);
+	//				WindowUpdate(queue, ch->rttEstimator.baseRtt, circ->GetId (), direction);
 			}
       //queue->ssthresh = min (queue->cwnd,queue->ssthresh);
       //queue->ssthresh = max (queue->ssthresh,queue->cwnd / 2);
@@ -544,8 +502,8 @@ BBRTorBktapApp::PackageRelayCell (Ptr<BBRBktapCircuit> circ, CellDirection direc
   NS_ASSERT (queue);
   header.seq = queue->tailSeq + 1;
   cell->AddHeader (header);
-  queue->virtRtt.SentSeq (header.seq);
-  queue->actRtt.SentSeq (header.seq);
+  queue->virtRtt.SentSeq2 (header.seq, queue->headSeq);
+  queue->actRtt.SentSeq2 (header.seq, queue->headSeq);
   queue->Add (cell, header.seq);
 }
 
@@ -625,8 +583,8 @@ BBRTorBktapApp::FlushPendingCell (Ptr<BBRBktapCircuit> circ, CellDirection direc
 //Think they are ensuring its the middle node here.
 //For edge nodes data going in we use PackageRelayCell 
       if (circ->GetChannel (oppdir)->SpeaksCells ()) {
-          queue->virtRtt.SentSeq (header.seq);
-          queue->actRtt.SentSeq (header.seq);
+          queue->virtRtt.SentSeq2 (header.seq, queue->headSeq);
+          queue->actRtt.SentSeq2 (header.seq, queue->headSeq);
       }
 
       ch->m_flushQueue.push (cell);
@@ -643,7 +601,7 @@ BBRTorBktapApp::FlushPendingCell (Ptr<BBRBktapCircuit> circ, CellDirection direc
 
       if (queue->highestTxSeq == header.seq) {
           circ->IncrementStats (direction,0,bytes_written);
-          SendFeedbackCell (circ, oppdir, FWD, queue->highestTxSeq + 1);
+          //SendFeedbackCell (circ, oppdir, FWD, queue->highestTxSeq + 1);
       }
 
       if (!queue->WasRetransmit()) {
@@ -681,14 +639,14 @@ BBRTorBktapApp::SendFeedbackCell (Ptr<BBRBktapCircuit> circ, CellDirection direc
 
 void
 BBRTorBktapApp::PushFeedbackCell (Ptr<BBRBktapCircuit> circ, CellDirection direction) {
+  cout << "Node: " << GetNodeName() << ", Pushing Feedback cell " << endl;
   Ptr<BBRUdpChannel> ch = circ->GetChannel (direction);
   Ptr<BBRSeqQueue> queue = circ->GetQueue (direction);
 
   CellDirection oppdir   = circ->GetOppositeDirection (direction);
   Ptr<BBRSeqQueue> oppqueue = circ->GetQueue (oppdir);
-
   NS_ASSERT (ch);
-
+  
   while (queue->ackq.size () > 0 || queue->fwdq.size () > 0) {
       Ptr<Packet> cell = Create<Packet> ();
       FdbkCellHeader header;
@@ -700,17 +658,18 @@ BBRTorBktapApp::PushFeedbackCell (Ptr<BBRBktapCircuit> circ, CellDirection direc
               queue->ackq.pop ();
           }
       }
-      if (queue->fwdq.size () > 0) {
-          header.flags |= FWD;
-          header.fwd = queue->fwdq.front ();
-          queue->fwdq.pop ();
-      }
-
-			header.diff = oppqueue->circ_diff;
+      //if (queue->fwdq.size () > 0) {
+      //    header.flags |= FWD;
+      //    header.fwd = queue->fwdq.front ();
+      //    queue->fwdq.pop ();
+      //}
+      header.diff = 0;
 
       cell->AddHeader (header);
+      cout << "Reaching here"<<endl;
       ch->m_flushQueue.push (cell);
       ch->ScheduleFlush ();
+      //cout << "Reaching here"<<endl;
   }
 }
 

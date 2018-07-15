@@ -254,13 +254,21 @@ class SimpleRttEstimator
 {
 public:
   map< uint32_t,Time > rttHistory;
-  set<uint32_t> retx;
+  set<uint32_t> retx;  
+  // N: adding a map to contain the seqno of last packet whose ack was recieved when this packet was sent
+  map< uint32_t, uint32_t > delRateHistory;
+  set<uint32_t> delx;
+  
+  std::list<double> delRateFilter;
+  double maxDelRate;
+  
   Time estimatedRtt;
   Time devRtt;
   Time currentRtt;
   Time baseRtt;
   uint32_t cntRtt;
   uint32_t rttMultiplier;
+  
 
   SimpleRttEstimator () {
     rttMultiplier = 1;
@@ -284,6 +292,23 @@ public:
         retx.insert (seq);
       }
   }
+  
+  // N: Written an updated SentSeq to also record delivery information
+  void
+  SentSeq2 (uint32_t sentSeq, uint32_t lastAckSeq){
+    if (rttHistory.size () == 0 || rttHistory.rbegin ()->first + 1 == sentSeq)
+      {
+        // next seq, log it.
+        rttHistory[sentSeq] = Simulator::Now ();
+	delRateHistory[sentSeq] = lastAckSeq-1;
+      }
+    else
+      {
+        //remember es retx, delx
+        retx.insert (sentSeq);
+        delx.insert (sentSeq);
+      }  
+  }
 
   Time
   EstimateRtt (uint32_t ack) {
@@ -302,6 +327,22 @@ public:
     return rtt;
   }
 
+  double
+  EstimateDelRate (uint32_t ack, Time rtt) {
+    double delRate = 0;
+    if (delRateHistory.find (ack - 1) != delRateHistory.end ())
+      {
+        if (delx.find (ack - 1) == delx.end ())
+          {
+            double delDiff = ack-1 - delRateHistory[ack - 1];
+            delRate = (delDiff/rtt).GetDouble();
+	    AddSampleDelRate (delRate);
+          }
+      }
+    delx.erase (ack - 1);
+    delRateHistory.erase (ack - 1);
+    return delRate;
+  }
   void
   AddSample (Time rtt) {
     if (rtt > 0)
@@ -321,6 +362,34 @@ public:
         baseRtt = min (baseRtt,rtt);
         currentRtt = min (rtt,currentRtt);
         ++cntRtt;
+      }
+  }
+
+  void
+  AddSampleDelRate (double delRate) {
+    if (delRate > 0)
+      {
+        if (delRateFilter.size() > 20)
+	  delRateFilter.pop_front();
+	delRateFilter.push_back(delRate);
+        maxDelRate = 0;
+	for (std::list<double>::iterator it=delRateFilter.begin(); it != delRateFilter.end(); ++it)	
+	  maxDelRate = max(maxDelRate,*it);
+	//double alpha = 0.125;
+        //double beta = 0.25;
+        //if (estimatedRtt > 0)
+          //{
+            //estimatedRtt = (1 - alpha) * estimatedRtt + alpha * rtt;
+            //devRtt = (1 - beta) * devRtt + beta* Abs (rtt - estimatedRtt);
+          //}
+        //else
+          //{
+            //estimatedRtt = rtt;
+          //}
+
+        //baseRtt = min (baseRtt,rtt);
+        //currentRtt = min (rtt,currentRtt);
+        //++cntRtt;
       }
   }
 
