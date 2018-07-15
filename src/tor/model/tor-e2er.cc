@@ -363,9 +363,9 @@ MarutTorBktapApp::ReceivedRelayCell (Ptr<MarutBktapCircuit> circ, CellDirection 
   if (newseq) {
     m_readbucket.Decrement(cell->GetSize());
   }
-  CellDirection oppdir = circ->GetOppositeDirection (direction);
-  //Only send feedback cell from endnode
 
+  CellDirection oppdir = circ->GetOppositeDirection (direction);
+  //Only send ack cell from endnode
   if (!(ch->SpeaksCells())) {
     cout << "Node: " << GetNodeName() << " Sending ACK Cell with header: " << queue->tailSeq + 1 <<endl;
     SendFeedbackCell (circ, oppdir, ACK, queue->tailSeq + 1);

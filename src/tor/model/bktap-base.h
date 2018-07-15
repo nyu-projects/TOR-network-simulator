@@ -272,17 +272,15 @@ public:
   }
 
   void
-  SentSeq (uint32_t seq){
-    if (rttHistory.size () == 0 || rttHistory.rbegin ()->first + 1 == seq)
-      {
+  SentSeq (uint32_t seq) {
+    if (rttHistory.size () == 0 || rttHistory.rbegin ()->first + 1 == seq) {
         // next seq, log it.
         rttHistory[seq] = Simulator::Now ();
-      }
-    else
-      {
+    }
+    else {
         //remember es retx
         retx.insert (seq);
-      }
+    }
   }
 
   Time
