@@ -7,16 +7,6 @@
 
 #include "ns3/point-to-point-net-device.h"
 
-/*
-#define ACK 1
-#define FWD 2
-#define FDBK 12
-#define NS3_SOCK_STREAM 0
-#define VEGASALPHA 3
-#define VEGASBETA 6
-#define UDP_CELL_HEADER_SIZE (4 + 4 + 2 + 6 + 2 + 1)
-*/
-
 namespace ns3 {
 
 class MarutBktapCircuit;

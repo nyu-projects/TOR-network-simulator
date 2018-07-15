@@ -337,9 +337,7 @@ public:
     return rto;
   }
 };
-
 */
-
 
 class SeqQueue : public SimpleRefCount<SeqQueue>
 {
