@@ -13,7 +13,7 @@ void TtlbCallback(int, double, std::string);
 
 int main (int argc, char *argv[]) {
     uint32_t run = 1;
-    Time simTime = Time("60s");
+    Time simTime = Time("90s");
     //string flavor = "vanilla";
     //string flavor = "bktap";
     //string flavor = "marut";

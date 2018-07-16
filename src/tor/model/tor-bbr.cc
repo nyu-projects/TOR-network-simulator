@@ -351,7 +351,7 @@ BBRTorBktapApp::ReceivedRelayCell (Ptr<BBRBktapCircuit> circ, CellDirection dire
   Ptr<BBRSeqQueue> queue = circ->GetQueue (direction);
   Ptr<BBRUdpChannel> ch = circ->GetChannel (direction);
 
-  cout << "Node: " << GetNodeName() << " Received Relay Cell " << endl;
+  //cout << "Node: " << GetNodeName() << " Received Relay Cell " << endl;
   UdpCellHeader header;
   cell->PeekHeader (header);
   bool newseq = queue->Add (cell, header.seq);
@@ -377,7 +377,7 @@ BBRTorBktapApp::ReceivedAck (Ptr<BBRBktapCircuit> circ, CellDirection direction,
   if (ch->SpeaksCells() && oppch->SpeaksCells()) {
 		SendFeedbackCell (circ, direction, ACK, header.ack);
   } else {
-    cout << "Node: " << GetNodeName() << " Received Ack " << endl;
+    //cout << "Node: " << GetNodeName() << " Received Ack " << endl;
     if (header.ack == queue->headSeq) {
         // DupACK. Do fast retransmit.
         ++queue->dupackcnt;
@@ -408,16 +408,42 @@ BBRTorBktapApp::ReceivedAck (Ptr<BBRBktapCircuit> circ, CellDirection direction,
 //UPDATE cwnd for endhost (proxy node or server node)
 void
 BBRTorBktapApp::WindowUpdate (Ptr<BBRSeqQueue> queue, Time baseRtt, Time currRtt, double maxDelRate) {
-  cout << "Node: " << GetNodeName() <<"Inside  window upddate";
-  if (queue->Inflight2() > currRtt*maxDelRate)
-	--queue->cwnd;
-  else
-	++queue->cwnd;
+  //cout << "Node: " << GetNodeName() <<" Inside  window upddate" << " queue->Inflight2(): "<<queue->InflightAct()<<" currRtt: "<<currRtt<<" maxDelRate: "<<maxDelRate<<" currRtt*maxDelRate: "<<currRtt*maxDelRate;
+  
+  //check if delivery rate has not increased by less than 25% in last 3 RTT
+  if (queue->bbr_state == STARTUP_STATE && queue->actRtt.checkDelRateDelta() <= 25)
+        queue->bbr_state = DRAIN_STATE;
+  else if ( (queue->bbr_state == DRAIN_STATE || queue->bbr_state == PROBE_RTT_STATE) && (abs(queue->InflightAct() - (currRtt*maxDelRate).GetDouble() )/ (currRtt*maxDelRate) * 100 < 10) ){
+	queue->bbr_state = PROBE_BW_STATE;
+	queue->pacing_gain = 1.00;
+  }
+  else if (queue->bbr_state == PROBE_RTT_STATE){
+	queue->bbr_state = PROBE_BW_STATE;  // should also move to start if pipe has capacity, will do later
+	queue->pacing_gain = 1.00;  
+  }
+  else if (queue->actRtt.checkRttUpdate()){
+	queue->bbr_state = PROBE_RTT_STATE;
+  }
+
+  if (queue->bbr_state == STARTUP_STATE)
+	queue->cwnd *= queue->pacing_gain;
+  else if (queue->bbr_state == DRAIN_STATE)
+	queue->cwnd /= queue->pacing_gain;
+  else if (queue->bbr_state == PROBE_RTT_STATE)
+	queue->cwnd = 4;
+  else if (queue->bbr_state == PROBE_BW_STATE && queue->actRtt.cntRtt >= 7){
+	queue->pacing_gain = (queue->pacing_gain == 1.25) ? 0.75: 1.25;
+	queue->cwnd *= queue->pacing_gain;
+  }
   if (queue->cwnd < 1) {
       queue->cwnd = 1;
   }
   double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds (); 
   queue->cwnd = min (queue->cwnd, (uint32_t) maxexp);
+  
+  if (queue->actRtt.cntRtt >=8){
+	queue->actRtt.ResetCurrRtt();
+  }
 }
 
 void
@@ -427,7 +453,7 @@ BBRTorBktapApp::CongestionAvoidance (Ptr<BBRSeqQueue> queue){
 
 void
 BBRTorBktapApp::ReceivedFwd (Ptr<BBRBktapCircuit> circ, CellDirection direction, FdbkCellHeader header) {
-  cout << "Node: " << GetNodeName() << " Received Fwd Cell" << endl;
+  //cout << "Node: " << GetNodeName() << " Received Fwd Cell" << endl;
   //Received flow control feeback (FWD)
   Ptr<BBRSeqQueue> queue = circ->GetQueue (direction);
   Ptr<BBRUdpChannel> ch = circ->GetChannel (direction);
@@ -495,7 +521,7 @@ BBRTorBktapApp::ReadFromEdge (Ptr<Socket> socket)
 void
 BBRTorBktapApp::PackageRelayCell (Ptr<BBRBktapCircuit> circ, CellDirection direction, Ptr<Packet> cell)
 {
-  cout << "Node: " << GetNodeName() << " Relay Cell Packaged " << endl;
+  //cout << "Node: " << GetNodeName() << " Relay Cell Packaged " << endl;
   UdpCellHeader header;
   header.circId = circ->GetId ();
   Ptr<BBRSeqQueue> queue = circ->GetQueue (direction);
@@ -549,7 +575,7 @@ BBRTorBktapApp::WriteCallback ()
 uint32_t
 BBRTorBktapApp::FlushPendingCell (Ptr<BBRBktapCircuit> circ, CellDirection direction, bool retx) {
   Ptr<BBRSeqQueue> queue = circ->GetQueue (direction);
-  cout << "Node: " << GetNodeName() << ", Flush Pending Cell" << endl;
+  //cout << "Node: " << GetNodeName() << ", Flush Pending Cell" << endl;
 
   CellDirection oppdir   = circ->GetOppositeDirection (direction);
   Ptr<BBRUdpChannel> ch  = circ->GetChannel (direction);
@@ -559,7 +585,7 @@ BBRTorBktapApp::FlushPendingCell (Ptr<BBRBktapCircuit> circ, CellDirection direc
 //Only check Window if NOT a MIDDLE NODE. 
 //ToDo:Should we also add a check (!ch->SpeaksCells() && oppch->SpeaksCells())
   if (!(ch->SpeaksCells() && oppch->SpeaksCells()) && queue->Window () <= 0 && !retx) {
-      cout << "Node: " << GetNodeName() << ", Edge Node with window less than 0" << endl;
+      //cout << "Node: " << GetNodeName() << ", Edge Node with window less than 0" << endl;
       return 0;
   }
 
@@ -610,13 +636,13 @@ BBRTorBktapApp::FlushPendingCell (Ptr<BBRBktapCircuit> circ, CellDirection direc
 
       return bytes_written;
     }
-    cout << "Node: " << GetNodeName() << ", Node has no data to flush" << endl;
+    //cout << "Node: " << GetNodeName() << ", Node has no data to flush" << endl;
   return 0;
 }
 
 void
 BBRTorBktapApp::SendFeedbackCell (Ptr<BBRBktapCircuit> circ, CellDirection direction, uint8_t flag, uint32_t ack) {
-  cout << "Node: " << GetNodeName() << ", Sending feedback cell " << ", isAck:" << (flag & ACK) <<", isFwd:"<< (flag & FWD) << ", ack:" << ack << endl;
+  //cout << "Node: " << GetNodeName() << ", Sending feedback cell " << ", isAck:" << (flag & ACK) <<", isFwd:"<< (flag & FWD) << ", ack:" << ack << endl;
   Ptr<BBRUdpChannel> ch = circ->GetChannel (direction);
   Ptr<BBRSeqQueue> queue = circ->GetQueue (direction);
   NS_ASSERT (ch);
@@ -639,7 +665,7 @@ BBRTorBktapApp::SendFeedbackCell (Ptr<BBRBktapCircuit> circ, CellDirection direc
 
 void
 BBRTorBktapApp::PushFeedbackCell (Ptr<BBRBktapCircuit> circ, CellDirection direction) {
-  cout << "Node: " << GetNodeName() << ", Pushing Feedback cell " << endl;
+  //cout << "Node: " << GetNodeName() << ", Pushing Feedback cell " << endl;
   Ptr<BBRUdpChannel> ch = circ->GetChannel (direction);
   Ptr<BBRSeqQueue> queue = circ->GetQueue (direction);
 
@@ -658,18 +684,11 @@ BBRTorBktapApp::PushFeedbackCell (Ptr<BBRBktapCircuit> circ, CellDirection direc
               queue->ackq.pop ();
           }
       }
-      //if (queue->fwdq.size () > 0) {
-      //    header.flags |= FWD;
-      //    header.fwd = queue->fwdq.front ();
-      //    queue->fwdq.pop ();
-      //}
       header.diff = 0;
 
       cell->AddHeader (header);
-      cout << "Reaching here"<<endl;
       ch->m_flushQueue.push (cell);
       ch->ScheduleFlush ();
-      //cout << "Reaching here"<<endl;
   }
 }
 

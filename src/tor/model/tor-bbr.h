@@ -7,16 +7,6 @@
 
 #include "ns3/point-to-point-net-device.h"
 
-/*
-#define ACK 1
-#define FWD 2
-#define FDBK 12
-#define NS3_SOCK_STREAM 0
-#define VEGASALPHA 3
-#define VEGASBETA 6
-#define UDP_CELL_HEADER_SIZE (4 + 4 + 2 + 6 + 2 + 1)
-*/
-
 #define STARTUP_STATE 1
 #define DRAIN_STATE 2
 #define PROBE_BW_STATE 3
@@ -31,13 +21,12 @@ class BBRSeqQueue : public SimpleRefCount<BBRSeqQueue>
 {
 public:
   uint32_t cwnd;
-  //uint64_t diff;
   uint8_t  isNegative;
-
-  //uint64_t circ_diff;
   uint8_t  circ_isNegative;
-
+  
   uint8_t bbr_state;  
+  double pacing_gain;
+ 
   uint32_t ssthresh;
   uint32_t nextTxSeq;
   uint32_t highestTxSeq;
@@ -61,12 +50,12 @@ public:
   BBRSeqQueue ()
   {
     cwnd = 6;
-    //diff = 0;
     isNegative = 0;
-    //circ_diff = 0;
     circ_isNegative = 0;
+    // N: initialize state as Startup
     bbr_state = 1;
-    
+    pacing_gain = 2/ log (2);    
+
     nextTxSeq = 1;
     highestTxSeq = 0;
     tailSeq = 0;
@@ -101,12 +90,12 @@ public:
   GetCell (uint32_t seq)
   {
     Ptr<Packet> cell;
-if (cellMap.find (seq) != cellMap.end ())
+      if (cellMap.find (seq) != cellMap.end ())
       {
         cell = cellMap[seq];
       }
-    wasRetransmit = true; //implicitely assume that it is a retransmit
-    return cell;
+      wasRetransmit = true; //implicitely assume that it is a retransmit
+      return cell;
   }
 
   Ptr<Packet>
@@ -180,7 +169,7 @@ if (cellMap.find (seq) != cellMap.end ())
   }
 
   uint32_t
-  Inflight2 ()
+  InflightAct ()
   {
     return nextTxSeq - headSeq - 1;
   }
@@ -223,7 +212,6 @@ class BBRBktapCircuit : public BaseCircuit
 {
 public:
   BBRBktapCircuit (uint16_t);
-  // ~MarutBktapCircuit();
 
   Ptr<BBRUdpChannel> inbound;
   Ptr<BBRUdpChannel> outbound;

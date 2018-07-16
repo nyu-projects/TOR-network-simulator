@@ -9,7 +9,6 @@
 
 #define ACK 1
 #define FWD 2
-//#define MRT 3
 #define FDBK 12
 #define NS3_SOCK_STREAM 0
 #define VEGASALPHA 3
@@ -167,14 +166,11 @@ public:
   uint8_t flags;
   uint32_t ack;
   uint32_t fwd;
-//  uint32_t mrt;
   uint64_t diff;
-//  uint8_t  isNegative;
 
   FdbkCellHeader ()
   {
-    circId = flags = ack = fwd = 0;//mrt = 0;
-//    diff = isNegative = 0;
+    circId = flags = ack = fwd = 0;
     cellType = FDBK;
   }
 
@@ -198,24 +194,19 @@ public:
   Print (ostream &os) const
   {
     os << "id=" << circId;
-    os << " ack=" << ack << " fwd=" << fwd;// << " mrt=" << mrt;
+    os << " ack=" << ack << " fwd=" << fwd;
     if ((flags & ACK) != 0) {
         os << " ACK";
     }
     if ((flags & FWD) != 0) {
         os << " FWD";
     }
-//    if ((flags & MRT) != 0) {
-//        os << " MRT";
-//    }
     os <<" diff= "<< diff;
-//    os <<" isNegative= "<<isNegative;
   }
 
   uint32_t
   GetSerializedSize () const
   {
-    //return  (2 + 1 + 1 + 4 + 4 + 8 + 1);
     return  (2 + 1 + 1 + 4 + 4 + 8);
   }
 
@@ -228,9 +219,7 @@ public:
     i.WriteU8 (flags);
     i.WriteU32 (ack);
     i.WriteU32 (fwd);
-//    i.WriteU32 (mrt);
     i.WriteU64 (diff);
-//    i.WriteU8 (isNegative);
   }
 
   uint32_t
@@ -242,13 +231,15 @@ public:
     flags = i.ReadU8 ();
     ack = i.ReadU32 ();
     fwd = i.ReadU32 ();
-//    mrt = i.ReadU32 ();
     diff = i.ReadU64 ();
-//    isNegative = i.ReadU8 ();
     return GetSerializedSize ();
   }
 };
 
+struct RttDesc{
+  Time rtt;
+  Time currTime;
+};
 
 class SimpleRttEstimator
 {
@@ -261,6 +252,10 @@ public:
   
   std::list<double> delRateFilter;
   double maxDelRate;
+ 
+  std::list<RttDesc> RTPropFilter;
+  Time minRtt;
+  Time lastRttUpdated;
   
   Time estimatedRtt;
   Time devRtt;
@@ -275,6 +270,8 @@ public:
     estimatedRtt = Time (0);
     devRtt = Time (0);
     baseRtt = Time (Seconds (42));
+    minRtt = Time (Seconds (10000));
+    lastRttUpdated = Time(0);
     ResetCurrRtt ();
     cntRtt = 0;
   }
@@ -362,7 +359,20 @@ public:
         baseRtt = min (baseRtt,rtt);
         currentRtt = min (rtt,currentRtt);
         ++cntRtt;
-      }
+      
+	// N: Added the RTPropFilter part for BBR 
+       RttDesc newRtt;
+       newRtt.rtt = rtt;
+       newRtt.currTime = Simulator::Now();	
+       RTPropFilter.push_back(newRtt);
+	Time old_minRtt = minRtt;
+       while (Simulator::Now().GetSeconds() - RTPropFilter.front().currTime.GetSeconds() > Time(Seconds(40)))
+         RTPropFilter.pop_front(); 
+       for (std::list<RttDesc>::iterator it = RTPropFilter.begin(); it!= RTPropFilter.end(); it++)
+	 minRtt = min(minRtt,it->rtt);
+	if (old_minRtt != minRtt)
+	   lastRttUpdated = Simulator::Now();
+     }
   }
 
   void
@@ -375,22 +385,26 @@ public:
         maxDelRate = 0;
 	for (std::list<double>::iterator it=delRateFilter.begin(); it != delRateFilter.end(); ++it)	
 	  maxDelRate = max(maxDelRate,*it);
-	//double alpha = 0.125;
-        //double beta = 0.25;
-        //if (estimatedRtt > 0)
-          //{
-            //estimatedRtt = (1 - alpha) * estimatedRtt + alpha * rtt;
-            //devRtt = (1 - beta) * devRtt + beta* Abs (rtt - estimatedRtt);
-          //}
-        //else
-          //{
-            //estimatedRtt = rtt;
-          //}
-
-        //baseRtt = min (baseRtt,rtt);
-        //currentRtt = min (rtt,currentRtt);
-        //++cntRtt;
       }
+  }
+
+  double 
+  checkDelRateDelta (){
+    if (delRateFilter.size() > 3){
+	std::list<double>::iterator it=delRateFilter.end();
+	double diff = *it;
+        it--;it--;it--;
+        diff = (diff - *it) / *it *100 ;
+	return diff;
+    }
+    return 100.00;
+  }
+
+  bool
+  checkRttUpdate (){
+	if ((Simulator::Now() - lastRttUpdated).GetSeconds() > Time( Seconds(10)))
+	   return true;
+	return false;
   }
 
   void
