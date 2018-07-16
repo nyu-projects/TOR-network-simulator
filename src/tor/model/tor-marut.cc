@@ -6,11 +6,11 @@ using namespace std;
 
 namespace ns3 {
 
-  std::string CellDirectionArray[2] =
-  {
-          "INBOUND",
-                "OUTBOUND"
-  };
+//  std::string CellDirectionArray[2] =
+//  {
+//          "INBOUND",
+//                "OUTBOUND"
+//  };
 
 
 NS_LOG_COMPONENT_DEFINE ("MarutTorBktapApp");

@@ -18,6 +18,12 @@
 
 namespace ns3 {
 
+//std::string CellDirectionArray[2] = 
+//{
+//  "INBOUND",
+//  "OUTBOUND"
+//};
+
 class BaseCellHeader : public Header
 {
 public:

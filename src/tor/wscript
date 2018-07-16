@@ -10,6 +10,7 @@ def build(bld):
     module = bld.create_ns3_module('tor', ['internet', 'applications'])
     module.source = [
         'model/tor-e2er.cc',
+        'model/tor-timely.cc',
         'model/tor-base.cc',
         'model/tor.cc',
         'model/tor-fair.cc',
@@ -35,8 +36,10 @@ def build(bld):
     headers.module = 'tor'
     headers.source = [
         'model/tor-e2er.h',
+        'model/tor-timely.h',
         'model/tor-base.h',
         'model/bktap-base.h',
+        'model/e2er-base.h',
         'model/tor.h',
         'model/tor-fair.h',
         'model/tor-pctcp.h',

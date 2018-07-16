@@ -16,7 +16,8 @@ int main (int argc, char *argv[]) {
     Time simTime = Time("90s");
     //string flavor = "vanilla";
     //string flavor = "bktap";
-    string flavor = "marut";
+    //string flavor = "marut";
+    string flavor = "timely";
 
     CommandLine cmd;
     cmd.AddValue("run", "run number", run);
@@ -53,6 +54,8 @@ int main (int argc, char *argv[]) {
         th.SetTorAppType("ns3::TorE2eApp");
     else if (flavor == "marut")
         th.SetTorAppType("ns3::MarutTorBktapApp");
+    else if (flavor == "timely")
+        th.SetTorAppType("ns3::TorTimelyApp");
     else if (flavor == "n23")
         th.SetTorAppType("ns3::TorN23App");
     else if (flavor == "fair")
