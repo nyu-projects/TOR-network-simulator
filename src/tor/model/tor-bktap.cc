@@ -406,35 +406,29 @@ TorBktapApp::ReceivedAck (Ptr<BktapCircuit> circ, CellDirection direction, FdbkC
 
 
 void
-TorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, Time baseRtt)
-{
+TorBktapApp::CongestionAvoidance (Ptr<SeqQueue> queue, Time baseRtt) {
   //Do the Vegas-thing every RTT
-  if (queue->virtRtt.cntRtt > 2)
-    {
+  if (queue->virtRtt.cntRtt > 2) {
       Time rtt = queue->virtRtt.currentRtt;
       double diff = queue->cwnd * (rtt.GetSeconds () - baseRtt.GetSeconds ()) / baseRtt.GetSeconds ();
       // uint32_t target = queue->cwnd * baseRtt.GetMilliSeconds() / rtt.GetMilliSeconds();
 
-      if (diff < VEGASALPHA)
-        {
+      if (diff < VEGASALPHA) {
           ++queue->cwnd;
-        }
+      }
 
-      if (diff > VEGASBETA)
-        {
+      if (diff > VEGASBETA) {
           --queue->cwnd;
-        }
+      }
 
-      if (queue->cwnd < 1)
-        {
+      if (queue->cwnd < 1) {
           queue->cwnd = 1;
-        }
+      }
 
       double maxexp = m_burst.GetBitRate () / 8 / CELL_PAYLOAD_SIZE * baseRtt.GetSeconds ();
       queue->cwnd = min (queue->cwnd, (uint32_t) maxexp);
 
       queue->virtRtt.ResetCurrRtt ();
-
     }
   else
     {
