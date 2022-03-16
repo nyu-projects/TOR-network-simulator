@@ -1,9 +1,8 @@
 ## Marut
 
-This repo implements Marut, an experimental Congestion Control transport protocol for the [TOR network](https://www.torproject.org/). The implementation is done over a TOR simulation built over a discrete event network simulator [ns-3](https://www.nsnam.org/) forked from [here](https://github.com/tschorsch/nstor)
+This repo implements Marut, an experimental Congestion Control transport protocol for the [TOR network](https://www.torproject.org/). The implementation is using a TOR simulation built over a discrete event network simulator [ns-3](https://www.nsnam.org/) forked from [here](https://github.com/tschorsch/nstor)
 
-
-
+Improvements for downloads in both 'Bulk' and 'Web' modes are shown for 2 different kind of network topologies, a Tree topology and a dumbbell topology. 
 
 ### Setup
 git clone https://github.com/ambujojha/nstor.git
@@ -34,7 +33,6 @@ Build nstor:
 ./waf
 
 ./waf --run scratch/<name>
-
 
 ## The Network Simulator, Version 3
 
