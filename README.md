@@ -5,6 +5,7 @@ This repo implements Marut, an experimental Congestion Control transport protoco
 Improvements for downloads in both 'Bulk' and 'Web' modes are shown for 2 different kind of network topologies, a Tree topology and a dumbbell topology. 
 
 ### Setup
+```
 git clone https://github.com/ambujojha/nstor.git
 sudo apt-get update
 sudo apt-get install ssh
@@ -13,26 +14,33 @@ hg clone https://secure.wand.net.nz/mercurial/nsc       // install nsc in nstor
 sudo apt-get install build-essential
 sudo apt-get install flex
 sudo apt-get install bison
-
+```
 
 Build NSC:
+```
 cd nsc
 
-update num_Stacks 200 in below:
+# update num_Stacks to 200 in below:
 globaliser/sim/num_stacks.h
 sim/num_stacks.h
+```
 
-clean:
+Clean:
+```
 python scons.py -c
+```
 
-build:
+Build:
+```
 python scons.py
+```
 
 Build nstor:
+```
 ./waf configure --with-nsc=nsc/
 ./waf
-
 ./waf --run scratch/<name>
+```
 
 ## The Network Simulator, Version 3
 
