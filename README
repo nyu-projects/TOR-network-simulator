@@ -1,6 +1,7 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Added by Ambuj Ojha and Neha Sharma
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+## Marut
+
+This repo implements Marut, an experimental Congestion Control transport protocol for the [TOR network](https://www.torproject.org/). The implementation is done over a TOR simulation built over a discrete event network simulator [ns-3](https://www.nsnam.org/) forked from [here](https://github.com/tschorsch/nstor)
+
 
 Setup:
 git clone https://github.com/ambujojha/nstor.git
@@ -20,8 +21,6 @@ update num_Stacks 200 in below:
 globaliser/sim/num_stacks.h
 sim/num_stacks.h
 
-
-
 clean:
 python scons.py -c
 
@@ -34,30 +33,10 @@ Build nstor:
 
 ./waf --run scratch/<name>
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Please note, that this ns-3 fork implements a module to simulate the
-Tor network (https://www.torproject.org). In addition, it implements
-an experimental transport protocol, namely BackTap: Backpressure-based
-Transport Protocol.
+## The Network Simulator, Version 3
 
-Examples are included in the repository. We suggest to use the Network
-Simulation Cradle (NSC, http://research.wand.net.nz/software/nsc.php)
-for simulations with real-world network stacks.
-
-Contact:   Florian Tschorsch
-           tschorsch@informatik.hu-berlin.de
-
-
-
-
-
-
-    The Network Simulator, Version 3
-    --------------------------------
-
-Table of Contents:
-------------------
+### Table of Contents:
 
 1) An overview
 2) Building ns-3
