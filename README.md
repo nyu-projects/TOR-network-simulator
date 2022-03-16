@@ -3,7 +3,9 @@
 This repo implements Marut, an experimental Congestion Control transport protocol for the [TOR network](https://www.torproject.org/). The implementation is done over a TOR simulation built over a discrete event network simulator [ns-3](https://www.nsnam.org/) forked from [here](https://github.com/tschorsch/nstor)
 
 
-Setup:
+
+
+### Setup
 git clone https://github.com/ambujojha/nstor.git
 sudo apt-get update
 sudo apt-get install ssh
@@ -48,7 +50,6 @@ Note:  Much more substantial information about ns-3 can be found at
 http://www.nsnam.org
 
 1) An Open Source project
--------------------------
 
 ns-3 is a free open source project aiming to build a discrete-event
 network simulator targeted for simulation research and education.   
@@ -68,7 +69,6 @@ tutorial that is maintained at:
 http://www.nsnam.org/documentation/latest/
 
 2) Building ns-3
-----------------
 
 The code for the framework and the default models provided
 by ns-3 is built as a set of libraries. User simulations
@@ -96,7 +96,6 @@ Other platforms may or may not work: we welcome patches to
 improve the portability of the code to these other platforms. 
 
 3) Running ns-3
----------------
 
 On recent Linux systems, once you have built ns-3 (with examples
 enabled), it should be easy to run the sample programs with the
@@ -110,7 +109,6 @@ pcap trace files, which can be read by tcpdump -tt -r filename.pcap
 The program source can be found in the examples/routing directory.
 
 4) Getting access to the ns-3 documentation
--------------------------------------------
 
 Once you have verified that your build of ns-3 works by running
 the simple-point-to-point example as outlined in 4) above, it is
@@ -136,7 +134,6 @@ This documentation includes:
     http://www.nsnam.org/doxygen/index.html
 
 5) Working with the development version of ns-3
------------------------------------------------
 
 If you want to download and use the development version 
 of ns-3, you need to use the tool 'mercurial'. A quick and
